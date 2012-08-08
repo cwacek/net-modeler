@@ -12,7 +12,7 @@
 #include <linux/ip.h>
 #include <linux/tcp.h>
 
-#include "log.h"
+#include "nm_log.h"
 
 static struct nf_hook_ops nfho;
 struct iphdr *iph;
