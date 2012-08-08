@@ -1,5 +1,6 @@
 
-obj-m :=  nm_injector.o nm_scheduler.o net-modeler.o
+obj-m :=  net-modeler.o
+net-modeler-objs := nm_injector.o nm_scheduler.o
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 U_SRCS := uspace_queue.c
