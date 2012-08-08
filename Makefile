@@ -1,9 +1,10 @@
 
-obj-m := net-modeler.o
+obj-m :=  nm_injector.o nm_scheduler.o net-modeler.o
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
+all: revision module
 
-all: revision
+module:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
 
 revision:
