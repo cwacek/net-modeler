@@ -7,6 +7,7 @@
 #include "net-modeler.h"
 
 struct nm_global_sched nm_sched;
+static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 
 
 /** Initialize the global scheduler with the callback function 'func'.
@@ -23,6 +24,7 @@ int nm_init_sched(nm_cb_func func)
 {
 
   hrtimer_init(&nm_sched.timer,CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
+  nm_sched.timer.function = __nm_callback;
   nm_sched.callback = func;
 
   return 0;
@@ -52,6 +54,14 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
   return HRTIMER_NORESTART;
 }
 
+
+/** Cancels any running schedulers if they are for a time
+ *  <b>after</b> this one, and reschedule for this time.
+ */
+void nm_schedule(ktime_t time){
+
+  
+}
 
 /** Cancel any running schedulers **/
 void nm_cleanup_sched(void)
