@@ -4,7 +4,7 @@
 
 #include "nm_log.h"
 #include "nm_magic.h"
-#include "net-modeler.h"
+#include "nm_main.h"
 
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
@@ -69,3 +69,4 @@ void nm_cleanup_sched(void)
   hrtimer_cancel(&nm_sched.timer);
 }
 
+MODULE_LICENSE("GPL");

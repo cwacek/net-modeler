@@ -3,10 +3,10 @@
 //
 // A netfilter based network emulator
 //
-
+#define AUTHOR "Chris Wacek <cwacek@cs.georgetown.edu>"
 
 #include "nm_log.h"
-#include "net-modeler.h"
+#include "nm_main.h"
 #include "nm_magic.h"
 
 static struct nf_hook_ops nfho;
@@ -26,8 +26,6 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
   iph = (struct iphdr *) skb_network_header(skb);
 
   if (! IS_NM_IP(iph->daddr) ){
-    nm_log(NM_INFO,"Ignored packet destined for %pI4\n",&iph->daddr);
-    nm_log(NM_DEBUG,"NM_IP_NET: %X, MASK: %X, IP & MASK: %X\n",NM_IP_NET,NM_IP_MASK,iph->daddr);
     return NF_ACCEPT;
   }
   if (NM_SEEN(iph)){
@@ -47,8 +45,9 @@ ktime_t insert_delay(struct nm_global_sched * s){
 }
 
 
-int init_module(void)
+static int __init nm_init(void)
 {
+  printk(KERN_INFO "Starting up");
   nfho.hook = hook_func;
   nfho.hooknum = NF_INET_PRE_ROUTING | NF_INET_LOCAL_OUT;
   nfho.pf = PF_INET;
@@ -76,7 +75,7 @@ int init_module(void)
   return 0;
 }
 
-void cleanup_module(void)
+static void __exit nm_exit(void)
 {
   nm_cleanup_sched();
   nm_cleanup_injector();
@@ -84,4 +83,8 @@ void cleanup_module(void)
   printk(KERN_INFO "net-modeler cleaning up\n");
 }
 
+module_init(nm_init);
+module_exit(nm_exit);
 
+MODULE_AUTHOR(AUTHOR);
+MODULE_LICENSE("GPL");

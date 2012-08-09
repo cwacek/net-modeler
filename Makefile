@@ -1,6 +1,6 @@
 
 obj-m :=  net-modeler.o
-net-modeler-objs := nm_injector.o nm_scheduler.o
+net-modeler-objs := nm_main.o nm_injector.o nm_scheduler.o
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 U_SRCS := uspace_queue.c
@@ -35,7 +35,8 @@ revision:
 	@echo "\"$(shell git describe)\"" > version.i 
 
 clean:
-	-@rm *.ko *o 2>/dev/null
+	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) clean
+	
 
 install: all
 	sudo insmod net-modeler.ko

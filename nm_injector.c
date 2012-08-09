@@ -10,7 +10,7 @@
 #include <asm/uaccess.h>
 #include <linux/ip.h>
 
-#include "net-modeler.h"
+#include "nm_main.h"
 #include "nm_magic.h"
 #include "nm_log.h"
 
@@ -66,3 +66,5 @@ int nm_inject(struct iphdr *pkt, uint32_t len)
   } 
   return sent;
 }
+
+MODULE_LICENSE("GPL");
