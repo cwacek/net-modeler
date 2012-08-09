@@ -38,8 +38,11 @@ int nm_inject(struct iphdr *pkt, uint32_t len)
 {
   struct sockaddr_in sin;
   struct msghdr msg;
-  struct iovec iov;
+  struct kvec iov;
   int sent;
+
+  if (!sock)
+    nm_log(NM_WARN,"Socket is null\n");
 
   if (len < 0)
     return -2;
@@ -51,18 +54,15 @@ int nm_inject(struct iphdr *pkt, uint32_t len)
 
   iov.iov_base = (void *)pkt;
   iov.iov_len = len;
-  msg.msg_name=NULL;
-  msg.msg_namelen = 0;
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
+  msg.msg_name=&sin;
+  msg.msg_namelen = sizeof(sin);
   msg.msg_control = NULL;
   msg.msg_controllen = 0;
 
-  sent = sock_sendmsg(sock,&msg,len); 
-
+  sent = kernel_sendmsg(sock,&msg,&iov,1,len); 
 
   if ((sent != len)){
-    nm_log(NM_WARN,"sendto sent fewer bytes than expected");
+    nm_log(NM_WARN,"sendto sent fewer bytes than expected. Expected %u. Got %d\n",len,sent);
   } 
   return sent;
 }
