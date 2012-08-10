@@ -20,7 +20,7 @@ static struct socket *sock;
 int nm_init_injector()
 {
   int err;
-  err = sock_create_kern(PF_INET, SOCK_RAW, IPPROTO_RAW, &sock);
+  err = sock_create_kern(AF_INET, SOCK_RAW, IPPROTO_RAW, &sock);
   if (err < 0)
     nm_log(NM_WARN,"Socket couldn't be created.");
     return err;
@@ -28,12 +28,14 @@ int nm_init_injector()
 
 void nm_cleanup_injector()
 {
+  log_func_entry;
   if (sock)
     sock_release(sock);
 }
 
 /** Inject 'pkt' back into the networking subsystem.
  *  Return the number of bytes sent, or -1 if it failed.
+ *
  **/
 int nm_inject(struct iphdr *pkt, uint32_t len)
 {

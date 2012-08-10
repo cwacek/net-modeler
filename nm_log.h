@@ -25,4 +25,6 @@
     printf(NM_LOG_PREFIX _fmt,##__VA_ARGS__) 
 #endif
 
+#define log_func_entry if (NM_LOG_LEVEL == NM_DEBUG ) printk(KERN_EMERG "Entered %s",__func__)
+
 #endif /*__KERN_NM_LOG__*/

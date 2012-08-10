@@ -8,10 +8,16 @@
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/kfifo.h>
+#include "nm_log.h"
 
 #define CALENDAR_SIZE (sizeof(struct nm_packet *))<<4
 #define MSECS_TO_NSECS(x) ((x) * 1000000)
 #define ptr_size sizeof(void *)
+
+#define IPH_FMT "[id:%hu src:%pI4 dst:%pI4 proto:%u]"
+#define IPH_FMT_DATA(iph) (iph)->id, &(iph)->saddr, &(iph)->daddr, (iph)->protocol
+
+#define check_call(x) if ((x) < 0) nm_log(NM_WARN,"Call "#x" failed\n")
 
 /** Injector **/
 void nm_cleanup_injector(void);
