@@ -84,6 +84,7 @@ ktime_t repeat_1ms(struct nm_global_sched *sch)
 static int __init nm_init(void)
 {
   printk(KERN_INFO "Starting up");
+  nm_structures_init();
   nfho.hook = hook_func;
   nfho.hooknum = NF_INET_PRE_ROUTING | NF_INET_LOCAL_OUT;
   nfho.pf = PF_INET;
@@ -113,6 +114,7 @@ static void nm_exit(void)
   nm_cleanup_sched();
   nm_cleanup_injector();
   nf_unregister_hook(&nfho);
+  nm_structures_release();
   printk(KERN_INFO "net-modeler cleaning up\n");
 }
 

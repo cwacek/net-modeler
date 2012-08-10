@@ -4,13 +4,39 @@
 
 static uint32_t _lookup_path(uint32_t src,uint32_t dst);
 
+struct nm_obj_cache nm_objects;
+void nm_structures_init()
+{
+  nm_objects.NM_PKT_ALLOC = kmem_cache_create("nm_packets",
+                                            sizeof(nm_packet_t),
+                                            0, 0, NULL);
+  nm_objects.SOCKADDR_ALLOC = kmem_cache_create("sockaddrs",
+                                            sizeof(struct sockaddr_in),
+                                            0, 0, NULL);
+  nm_objects.MSGHDR_ALLOC = kmem_cache_create("msghdrs",
+                                            sizeof(struct msghdr),
+                                            0, SLAB_HWCACHE_ALIGN, NULL);
+  nm_objects.KVEC_ALLOC = kmem_cache_create("kvecs",
+                                            sizeof(struct kvec),
+                                            0, SLAB_HWCACHE_ALIGN, NULL);
+}
+
+void nm_structures_release()
+{
+  kmem_cache_destroy(nm_objects.NM_PKT_ALLOC);
+  kmem_cache_destroy(nm_objects.SOCKADDR_ALLOC);
+  kmem_cache_destroy(nm_objects.MSGHDR_ALLOC);
+  kmem_cache_destroy(nm_objects.KVEC_ALLOC);
+}
+
 nm_packet_t *
 nm_packet_init(void *data,uint32_t len,uint32_t src,uint32_t dst)
 {
-  nm_packet_t *pkt = kmalloc(sizeof(struct nm_packet),GFP_ATOMIC);
+  nm_packet_t *pkt = nm_alloc(NM_PKT_ALLOC,GFP_ATOMIC);
   pkt->data = kmalloc(len,GFP_ATOMIC);
   memcpy(pkt->data,data,len);
 
+  pkt->len = len;
   pkt->path_idx = 0;
   pkt->path_id = _lookup_path(src,dst);
 
@@ -20,7 +46,7 @@ nm_packet_init(void *data,uint32_t len,uint32_t src,uint32_t dst)
 void nm_packet_free(nm_packet_t *pkt)
 {
   kfree(pkt->data);
-  kfree(pkt);
+  nm_free(NM_PKT_ALLOC,pkt);
   return;
 }
 
@@ -30,3 +56,6 @@ _lookup_path(uint32_t src,uint32_t dst)
   nm_log(NM_WARN,"_lookup_path not implemented\n");
   return 0;
 }
+
+
+
