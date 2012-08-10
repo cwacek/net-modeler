@@ -8,6 +8,7 @@
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/kfifo.h>
+#include <net/netfilter/nf_queue.h>
 #include "nm_log.h"
 
 #define CALENDAR_SIZE (sizeof(struct nm_packet *))<<4

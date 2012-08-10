@@ -2,8 +2,7 @@
 #define __KERN_NM_STRUCTURES
 
 struct nm_packet {
-  void *data;
-  uint32_t len;
+  struct nf_queue_entry *data;
   uint32_t path_id;
   uint32_t path_idx;
 };
@@ -31,7 +30,7 @@ extern struct nm_obj_cache nm_objects;
  * _len_ and src and dst appropriately 
  **/
 nm_packet_t * 
-nm_packet_init(void * data, uint32_t len, uint32_t src, uint32_t dst);
+nm_packet_init(struct nf_queue_entry *data,  uint32_t src, uint32_t dst);
 
 /** Free a packet **/
 void nm_packet_free(nm_packet_t *pkt);

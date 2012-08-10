@@ -18,12 +18,13 @@ struct iphdr *iph;
 #define IS_NM_IP(ip) (((ip) & NM_IP_MASK) == (NM_IP_NET))
 #define NM_SEEN(iph) (iph->tos == TOS_MAGIC)
 
+#define queue_entry_iph(x) ((struct iphdr *)skb_network_header((x)->skb))
+
 unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
                        const struct net_device *in,
                        const struct net_device *out,
                        int (*okfn)(struct sk_buff *))
 {
-  nm_packet_t *pkt; 
 
   if (!skb) { return NF_ACCEPT; }
   iph = (struct iphdr *) skb_network_header(skb);
@@ -36,17 +37,8 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
                     IPH_FMT_DATA(iph));
     return NF_ACCEPT;
   }
-    
-  nm_log(NM_DEBUG,"Enqueuing new packet. "IPH_FMT"\n",
-                    IPH_FMT_DATA(iph));
 
-  pkt = nm_packet_init(iph,
-                        skb_tail_pointer(skb)- ((unsigned char *)iph),
-                        iph->saddr, iph->daddr);
-
-  nm_enqueue(&pkt,sizeof(nm_packet_t *));
-
-  return NF_STOLEN;
+  return NF_QUEUE;
 }
 
 ktime_t insert_delay(struct nm_global_sched * s){
@@ -77,15 +69,38 @@ ktime_t repeat_1ms(struct nm_global_sched *sch)
     nm_log(NM_DEBUG,"dequeued packet: "IPH_FMT"\n",
                     IPH_FMT_DATA((struct iphdr *)pkt->data));
 
-    res = nm_inject(pkt->data,pkt->len);
-    if (res < 0){
-      nm_log(NM_WARN,"Failed to inject packet: %d",res);
-    }
+    nf_reinject(pkt->data,NF_ACCEPT);
     nm_packet_free(pkt);
   }
 
   return ktime_set(0,MSECS_TO_NSECS(50));
 }
+
+static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
+{
+  nm_packet_t *pkt; 
+  int err;
+
+  nm_log(NM_DEBUG,"Enqueuing new packet. "IPH_FMT"\n",
+                    IPH_FMT_DATA(queue_entry_iph(entry)));
+
+  pkt = nm_packet_init(entry,
+                       queue_entry_iph(entry)->saddr, 
+                       queue_entry_iph(entry)->daddr);
+  
+  if (!pkt)
+    return -ENOMEM;
+  
+  if ((err = nm_enqueue(&pkt,sizeof(nm_packet_t *))) < 0)
+    return err;
+
+  return 0;
+}
+
+static const struct nf_queue_handler _queueh = {
+      .name   = "net-modeler",
+      .outfn  = _nm_queue_cb,
+};
 
 static int __init nm_init(void)
 {
@@ -93,6 +108,8 @@ static int __init nm_init(void)
   printk(KERN_INFO "Starting up");
 
   nm_structures_init();
+
+  check_call(nf_register_queue_handler(PF_INET,&_queueh));
 
   nfho.hook = hook_func;
   nfho.hooknum =  NF_INET_LOCAL_OUT;
@@ -104,13 +121,6 @@ static int __init nm_init(void)
   /* Initialize the global scheduler */
   if (nm_init_sched(repeat_1ms) < 0){
     nm_log(NM_WARN, "Failed to initialize scheduler\n");
-    cleanup_module();
-    return -1;
-  }
-
-  /* Initialize the packet reinjection stuff */
-  if (nm_init_injector() < 0){
-    nm_log(NM_WARN,"Failed to initialize injector\n");
     cleanup_module();
     return -1;
   }
@@ -127,6 +137,7 @@ static void nm_exit(void)
   nm_cleanup_sched();
   nm_cleanup_injector();
   nf_unregister_hook(&nfho);
+  nf_unregister_queue_handler(PF_INET,&_queueh);
   nm_structures_release();
   printk(KERN_INFO "net-modeler cleaning up\n");
 }

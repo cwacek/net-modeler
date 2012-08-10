@@ -30,13 +30,10 @@ void nm_structures_release()
 }
 
 nm_packet_t *
-nm_packet_init(void *data,uint32_t len,uint32_t src,uint32_t dst)
+nm_packet_init(struct nf_queue_entry *data,uint32_t src,uint32_t dst)
 {
   nm_packet_t *pkt = nm_alloc(NM_PKT_ALLOC,GFP_ATOMIC);
-  pkt->data = kmalloc(len,GFP_ATOMIC);
-  memcpy(pkt->data,data,len);
-
-  pkt->len = len;
+  pkt->data = data;
   pkt->path_idx = 0;
   pkt->path_id = _lookup_path(src,dst);
 
@@ -45,7 +42,6 @@ nm_packet_init(void *data,uint32_t len,uint32_t src,uint32_t dst)
 
 void nm_packet_free(nm_packet_t *pkt)
 {
-  kfree(pkt->data);
   nm_free(NM_PKT_ALLOC,pkt);
   return;
 }
