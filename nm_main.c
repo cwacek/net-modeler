@@ -47,33 +47,44 @@ ktime_t insert_delay(struct nm_global_sched * s){
   return ktime_set(0,0);
 }
 
-ktime_t repeat_1ms(struct nm_global_sched *sch)
+ktime_t update(struct nm_global_sched *sch)
 {
   struct nm_packet *pkt;
-  int res;
+  int missed_intervals, i, dequeued_ctr = 0;
+  ktime_t now = sch->timer.base->get_time();
   log_func_entry;
   
-  nm_log(NM_DEBUG, "Callback fired at %lld\n",ktime_to_ns(sch->timer.base->get_time()));
+  nm_log(NM_DEBUG, "Callback fired at %lld\n",ktime_to_ns(now));
 
-  /* If we have nothing to dequeue, bail out */
-  if (kfifo_is_empty(sch->calendar))
-    return ktime_set(0, MSECS_TO_NSECS(50));  
+  /** Make sure we process any intervals we missed **/
+  missed_intervals = ktime_to_ns(ktime_sub(now,sch->last_update)) 
+                        / MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS);
 
-  res = kfifo_out(sch->calendar,&pkt,sizeof(struct nm_packet *));
-  if (res != sizeof(struct nm_packet *)){
-    nm_log(NM_WARN,"Tried to dequeue packet pointer, but "
-            "didn't have enough data. Wanted %zu. Had %u",
-            sizeof(struct nm_packet *),
-            res);
-  } else {
-    nm_log(NM_DEBUG,"dequeued packet: "IPH_FMT"\n",
-                    IPH_FMT_DATA((struct iphdr *)pkt->data));
+  for (i = 1; i <= missed_intervals; i++)
+  {
+    /** We dequeue everything in the slot one at at time **/
+    while (( pkt = slot_pull(&scheduler_slot(sch,i))))
+    {
+      if (pkt->flags & NM_FLAG_HOP_INCOMPLETE) {
+        /** If this was a hop in progress, we want to enqueue rather than
+         * reinject **/
+        /*nm_enqueue(pkt,path_dist(path_id,path_idx) - pkt->hop_progress);*/
+      } else {
+        dequeued_ctr++;
+        nm_log(NM_DEBUG,"dequeued packet: "IPH_FMT"\n",
+                    IPH_FMT_DATA(queue_entry_iph(pkt->data)));
 
-    nf_reinject(pkt->data,NF_ACCEPT);
-    nm_packet_free(pkt);
+        nf_reinject(pkt->data,NF_ACCEPT);
+        nm_packet_free(pkt);
+      }
+    }
   }
 
-  return ktime_set(0,MSECS_TO_NSECS(50));
+  sch->now_index += missed_intervals;
+
+  nm_log(NM_INFO, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);
+
+  return ktime_set(0,MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS));
 }
 
 static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
@@ -91,7 +102,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   if (!pkt)
     return -ENOMEM;
   
-  if ((err = nm_enqueue(&pkt,sizeof(nm_packet_t *))) < 0)
+  if ((err = nm_enqueue(pkt,sizeof(nm_packet_t *))) < 0)
     return err;
 
   return 0;
@@ -119,15 +130,15 @@ static int __init nm_init(void)
   nf_register_hook(&nfho);
 
   /* Initialize the global scheduler */
-  if (nm_init_sched(repeat_1ms) < 0){
+  if (nm_init_sched(update) < 0){
     nm_log(NM_WARN, "Failed to initialize scheduler\n");
     cleanup_module();
     return -1;
   }
 
-  nm_log(NM_NOTICE,"net-modeler initiialized ("VERSION")\n");
+  nm_log(NM_NOTICE,"net-modeler initialized ("VERSION")\n");
 
-  nm_schedule(ktime_set(5,0));
+  nm_schedule(ktime_set(2,0));
   
   return 0;
 }

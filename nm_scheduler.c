@@ -3,6 +3,7 @@
 #include <linux/hrtimer.h>
 
 #include "nm_log.h"
+#include "nm_structures.h"
 #include "nm_magic.h"
 #include "nm_main.h"
 
@@ -21,23 +22,14 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
  **/
 int nm_init_sched(nm_cb_func func)
 {
-  int ret;
   log_func_entry;
 
   hrtimer_init(&nm_sched.timer,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
   nm_sched.timer.function = __nm_callback;
   nm_sched.callback = func;
 
-  nm_sched.calendar = kmalloc(sizeof(struct kfifo),GFP_KERNEL);
-
-  ret = kfifo_alloc(nm_sched.calendar,CALENDAR_SIZE,GFP_KERNEL);
-  if (!ret)
-    return -ret;
-
   nm_log(NM_DEBUG,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
               nm_sched.callback, nm_sched.timer.function);
-
-
   return 0;
 }
 
@@ -56,28 +48,64 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
   /*}*/
 
   interval = nm_sched.callback(&nm_sched);
+  if (ktime_to_ns(interval) == 0)
+    return HRTIMER_NORESTART;
 
-  if (hrtimer_start(&nm_sched.timer,interval,HRTIMER_MODE_REL) < 0){
+  if (hrtimer_start(&nm_sched.timer,ktime_add(interval,hrt->base->get_time()),HRTIMER_MODE_ABS) < 0){
     nm_log(NM_NOTICE,"Failed to schedule timer\n");
     return HRTIMER_NORESTART;
   }
   return HRTIMER_NORESTART;
 }
 
-int nm_enqueue(void *data,size_t len)
+/** Add a packet to the slot */
+static void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 {
-  int enqueued;
-  log_func_entry;
-
-  enqueued = kfifo_in(nm_sched.calendar,data,len);
-
-  if (enqueued != len){
-    nm_log(NM_WARN,"Failed to enqueue data. Wanted: %zu; Got: %u\n",
-                len,enqueued);
+  if (slot->n_packets == 0)
+  {
+    slot->head = p;
+    slot->tail = p;
+  } else {
+    slot->tail->next = p;
+    p->prev = slot->tail;
+    slot->tail = p;
   }
-  nm_log(NM_DEBUG,"Queue now contains %u elements\n",kfifo_len(nm_sched.calendar));
+  slot->n_packets++;
+}
 
-  return enqueued;
+/** Pull a nm_packet_t from the calendar slot, or return
+ * zero if none exist */
+nm_packet_t * slot_pull(struct calendar_slot *slot)
+{
+  nm_packet_t *pulled;
+
+  if (slot->n_packets == 0){
+    pulled = 0;
+  } else {
+    pulled = slot->tail;
+    slot->tail = (pulled->prev != 0) ? pulled->prev : 0;
+    pulled->prev = pulled->next = 0;
+    slot->tail->next = 0;
+    if (--slot->n_packets == 0)
+      slot->head = 0;
+  }
+
+  return pulled;
+}
+
+/** Enqueue a packet into the calendar at an offset from now **/
+int nm_enqueue(nm_packet_t *data,uint16_t offset)
+{
+  if (!one_hop_schedulable(offset)){
+    offset = CALENDAR_BUF_LEN;
+    data->hop_progress += CALENDAR_BUF_LEN;
+    data->flags |= NM_FLAG_HOP_INCOMPLETE; 
+  } else {
+    data->flags  = data->flags & ~NM_FLAG_HOP_INCOMPLETE;
+  }
+
+  slot_add_packet(&scheduler_slot((&nm_sched),offset), data);
+  return 0;
 }
 
 /** Cancels any running schedulers if they are for a time
@@ -95,7 +123,6 @@ void nm_schedule(ktime_t time){
 /** Cancel any running schedulers **/
 void nm_cleanup_sched(void)
 {
-  log_func_entry;
   hrtimer_cancel(&nm_sched.timer);
 }
 

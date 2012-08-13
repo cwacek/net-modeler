@@ -10,8 +10,13 @@
 #include <linux/kfifo.h>
 #include <net/netfilter/nf_queue.h>
 #include "nm_log.h"
+#include "nm_structures.h"
 
-#define CALENDAR_SIZE (sizeof(struct nm_packet *))<<4
+/** The number of milliseconds the calendar tracks forward **/
+#define UPDATE_INTERVAL_MSECS 1
+
+#include "nm_scheduler.h"
+
 #define MSECS_TO_NSECS(x) ((x) * 1000000)
 #define ptr_size sizeof(void *)
 
@@ -30,24 +35,9 @@ int nm_inject(struct iphdr *pkt, uint32_t len);
 struct nm_global_sched;
 typedef ktime_t (*nm_cb_func)(struct nm_global_sched *);
 
-
-/**
- * @curr_index  the current location in the packet buffer.
- * @timer       global hrtimer instance
- * @callback    the desired callback function. Will be passed the
- *              nm_global_sched struct, and must return the desired
- *              next timeout.
- **/
-struct nm_global_sched {
-  struct kfifo *calendar;
-  uint32_t curr_index;
-  struct hrtimer timer;
-  ktime_t (*callback)(struct nm_global_sched *);
-};
-
 int nm_init_sched(nm_cb_func);
 void nm_cleanup_sched(void);
-int nm_enqueue(void *data,size_t len);
+int nm_enqueue(nm_packet_t *data, uint16_t offset);
 void nm_schedule(ktime_t time);
 
 
