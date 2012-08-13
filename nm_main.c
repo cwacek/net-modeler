@@ -102,7 +102,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   if (!pkt)
     return -ENOMEM;
   
-  if ((err = nm_enqueue(pkt,sizeof(nm_packet_t *))) < 0)
+  if ((err = nm_enqueue(pkt,10)) < 0)
     return err;
 
   return 0;
