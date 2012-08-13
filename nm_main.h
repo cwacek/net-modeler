@@ -20,10 +20,11 @@
 #define MSECS_TO_NSECS(x) ((x) * 1000000)
 #define ptr_size sizeof(void *)
 
-#define IPH_FMT "[id:%hu src:%pI4 dst:%pI4 proto:%u]"
-#define IPH_FMT_DATA(iph) (iph)->id, &(iph)->saddr, &(iph)->daddr, (iph)->protocol
+#define IPH_FMT "[id:%hu src:%pI4 dst:%pI4 proto:%u ttl:%u]"
+#define IPH_FMT_DATA(iph) (iph)->id, &(iph)->saddr, &(iph)->daddr, (iph)->protocol, (iph)->ttl
 
-#define check_call(x) if ((x) < 0) nm_log(NM_WARN,"Call "#x" failed\n")
+#define check_call(x) if ((x) < 0) nm_warn("Call "#x" failed\n")
+
 
 /** Injector **/
 void nm_cleanup_injector(void);
