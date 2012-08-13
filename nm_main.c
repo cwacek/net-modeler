@@ -116,7 +116,7 @@ static const struct nf_queue_handler _queueh = {
 static int __init nm_init(void)
 {
   log_func_entry;
-  printk(KERN_INFO "Starting up");
+  nm_log(NM_NOTICE,"Starting up");
 
   nm_structures_init();
 
@@ -137,6 +137,7 @@ static int __init nm_init(void)
   }
 
   nm_log(NM_NOTICE,"net-modeler initialized ("VERSION")\n");
+  nm_log(NM_NOTICE,"logging at: %s\n",nm_loglevel_string(NM_LOG_LEVEL) );
 
   nm_schedule(ktime_set(2,0));
   

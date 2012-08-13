@@ -14,6 +14,12 @@
 
 #define NM_LOG_LEVEL NM_NOTICE_ID
 
+#define nm_loglevel_string(lev) \
+   ((lev == NM_DEBUG_ID ) ? "NM_DEBUG" :  \
+   (lev == NM_INFO_ID) ? "NM_INFO" : \
+   (lev == NM_NOTICE_ID) ? "NM_NOTICE" : \
+   (lev == NM_WARN_ID) ? "NM_WARN" : "NM_UNDEF")
+
 #define stringify(x) #x
 
 #if NM_DEBUG_ID <= NM_LOG_LEVEL 
