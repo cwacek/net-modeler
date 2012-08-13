@@ -39,7 +39,7 @@ clean:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) clean
 	
 
-install: all
+install: all uninstall
 	sudo insmod net-modeler.ko
 
 uninstall:
