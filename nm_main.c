@@ -33,7 +33,7 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
     return NF_ACCEPT;
   }
   if (NM_SEEN(iph)){
-    nm_log(NM_DEBUG,"Accepting previously seen packet. "IPH_FMT"\n",
+    nm_debug(LD_GENERAL,"Accepting previously seen packet. "IPH_FMT"\n",
                     IPH_FMT_DATA(iph));
     return NF_ACCEPT;
   }
@@ -54,7 +54,7 @@ ktime_t update(struct nm_global_sched *sch)
   ktime_t now = sch->timer.base->get_time();
   log_func_entry;
   
-  nm_log(NM_DEBUG, "Callback fired at %lld\n",ktime_to_ns(now));
+  nm_debug(LD_TIMING, "Callback fired at %lld\n",ktime_to_ns(now));
 
   /** Make sure we process any intervals we missed **/
   missed_intervals = ktime_to_ns(ktime_sub(now,sch->last_update)) 
@@ -71,7 +71,7 @@ ktime_t update(struct nm_global_sched *sch)
         /*nm_enqueue(pkt,path_dist(path_id,path_idx) - pkt->hop_progress);*/
       } else {
         dequeued_ctr++;
-        nm_log(NM_DEBUG,"dequeued packet: "IPH_FMT"\n",
+        nm_debug(LD_GENERAL,"dequeued packet: "IPH_FMT"\n",
                     IPH_FMT_DATA(queue_entry_iph(pkt->data)));
 
         nf_reinject(pkt->data,NF_ACCEPT);
@@ -82,7 +82,7 @@ ktime_t update(struct nm_global_sched *sch)
 
   sch->now_index += missed_intervals;
 
-  nm_log(NM_INFO, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);
+  nm_info(LD_GENERAL, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);
 
   return ktime_set(0,MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS));
 }
@@ -92,7 +92,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   nm_packet_t *pkt; 
   int err;
 
-  nm_log(NM_DEBUG,"Enqueuing new packet. "IPH_FMT"\n",
+  nm_debug(LD_GENERAL,"Enqueuing new packet. "IPH_FMT"\n",
                     IPH_FMT_DATA(queue_entry_iph(entry)));
 
   pkt = nm_packet_init(entry,
@@ -116,7 +116,7 @@ static const struct nf_queue_handler _queueh = {
 static int __init nm_init(void)
 {
   log_func_entry;
-  nm_log(NM_NOTICE,"Starting up");
+  nm_notice(LD_GENERAL,"Starting up");
 
   nm_structures_init();
 
@@ -131,13 +131,13 @@ static int __init nm_init(void)
 
   /* Initialize the global scheduler */
   if (nm_init_sched(update) < 0){
-    nm_log(NM_WARN, "Failed to initialize scheduler\n");
+     nm_warn(LD_ERROR,"Failed to initialize scheduler\n");
     cleanup_module();
     return -1;
   }
 
-  nm_log(NM_NOTICE,"net-modeler initialized ("VERSION")\n");
-  nm_log(NM_NOTICE,"logging at: %s\n",nm_loglevel_string(NM_LOG_LEVEL) );
+  nm_notice(LD_GENERAL,"net-modeler initialized ("VERSION")\n");
+  nm_notice(LD_GENERAL,"logging at: %s\n",nm_loglevel_string(NM_LOG_LEVEL) );
 
   nm_schedule(ktime_set(2,0));
   

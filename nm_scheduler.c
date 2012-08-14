@@ -34,7 +34,7 @@ int nm_init_sched(nm_cb_func func)
     SLOT_INIT(nm_sched.calendar[i]);
   }
 
-  nm_log(NM_DEBUG,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
+  nm_debug(LD_GENERAL,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
               nm_sched.callback, nm_sched.timer.function);
   return 0;
 }
@@ -58,7 +58,7 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
     return HRTIMER_NORESTART;
 
   if (hrtimer_start(&nm_sched.timer,ktime_add(interval,hrt->base->get_time()),HRTIMER_MODE_ABS) < 0){
-    nm_log(NM_NOTICE,"Failed to schedule timer\n");
+    nm_notice(LD_ERROR,"Failed to schedule timer\n");
     return HRTIMER_NORESTART;
   }
   return HRTIMER_NORESTART;
@@ -84,6 +84,8 @@ static void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 nm_packet_t * slot_pull(struct calendar_slot *slot)
 {
   nm_packet_t *pulled;
+
+  nm_debug(LD_GENERAL, "Pulling from slot with %u packets in it\n", slot->n_packets);
 
   if (slot->n_packets == 0){
     pulled = 0;
@@ -121,7 +123,7 @@ void nm_schedule(ktime_t time){
   log_func_entry;
   
   if (hrtimer_start(&nm_sched.timer,time,HRTIMER_MODE_REL) < 0){
-    nm_log(NM_WARN,"Failed to schedule timer for %lldns from now\n",
+    nm_warn(LD_ERROR,"Failed to schedule timer for %lldns from now\n",
                 ktime_to_ns(time));
   }
 }

@@ -51,7 +51,7 @@ void nm_packet_free(nm_packet_t *pkt)
 static uint32_t 
 _lookup_path(uint32_t src,uint32_t dst)
 {
-  nm_log(NM_WARN,"_lookup_path not implemented\n");
+  nm_warn(LD_ERROR,"_lookup_path not implemented\n");
   return 0;
 }
 
