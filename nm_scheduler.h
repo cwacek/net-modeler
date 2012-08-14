@@ -11,7 +11,8 @@
 #define scheduler_slot(scheduler, offset) (scheduler->calendar[(offset + scheduler->now_index) % CALENDAR_BUF_LEN])
 
 #define SLOT_INIT(slot) \
-    slot.n_packets = slot.head = slot.tail = 0 
+    slot.n_packets = 0;\
+    slot.head = slot.tail = 0 
 
 /** 
  * @entries   then number of entries stored into this buffer slot.

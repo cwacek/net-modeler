@@ -128,10 +128,23 @@ void nm_schedule(ktime_t time){
   }
 }
 
+static void __slot_free(struct calendar_slot * slot)
+{
+  nm_packet_t * tofree;
+  while ((tofree = slot_pull(slot)))
+  {
+    nm_free(NM_PKT_ALLOC,tofree);
+  }
+}
+
 /** Cancel any running schedulers **/
 void nm_cleanup_sched(void)
 {
+  int i;
   hrtimer_cancel(&nm_sched.timer);
+  for (i = 0; i < CALENDAR_BUF_LEN; i++){
+    __slot_free(&nm_sched.calendar[i]);
+  }
 }
 
 MODULE_LICENSE("GPL");
