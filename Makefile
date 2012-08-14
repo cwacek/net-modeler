@@ -1,6 +1,6 @@
 
 obj-m :=  net-modeler.o
-net-modeler-objs := nm_main.o nm_injector.o nm_scheduler.o nm_structures.o
+net-modeler-objs := nm_main.o nm_scheduler.o nm_structures.o
 KDIR := /lib/modules/$(shell uname -r)/build
 #KDIR := /home/cwacek/scratch/kernel/linux-3.0.0
 PWD := $(shell pwd)

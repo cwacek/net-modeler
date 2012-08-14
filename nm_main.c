@@ -147,7 +147,7 @@ static int __init nm_init(void)
 static void nm_exit(void)
 {
   nm_cleanup_sched();
-  nm_cleanup_injector();
+  /*nm_cleanup_injector();*/
   nf_unregister_hook(&nfho);
   nf_unregister_queue_handler(PF_INET,&_queueh);
   nm_structures_release();
