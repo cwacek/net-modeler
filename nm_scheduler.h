@@ -10,6 +10,8 @@
 #define one_hop_schedulable(offset) (offset < CALENDAR_BUF_LEN) ? 1 : 0
 #define scheduler_slot(scheduler, offset) (scheduler->calendar[(offset + scheduler->now_index) % CALENDAR_BUF_LEN])
 
+#define SLOT_INIT(slot) \
+    slot.n_packets = slot.head = slot.tail = 0 
 
 /** 
  * @entries   then number of entries stored into this buffer slot.

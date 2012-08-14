@@ -22,11 +22,17 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
  **/
 int nm_init_sched(nm_cb_func func)
 {
+  int i;
   log_func_entry;
 
   hrtimer_init(&nm_sched.timer,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
   nm_sched.timer.function = __nm_callback;
   nm_sched.callback = func;
+
+  /** Zero initialize our calendar slots or all hell will break loose */
+  for (i = 0; i < CALENDAR_BUF_LEN; i++){
+    SLOT_INIT(nm_sched.calendar[i]);
+  }
 
   nm_log(NM_DEBUG,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
               nm_sched.callback, nm_sched.timer.function);
