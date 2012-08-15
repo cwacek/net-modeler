@@ -10,6 +10,7 @@
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
+static unsigned long spin_flags = 0;
 
 inline ktime_t get_time(void){
   return nm_sched.timer.base->get_time();
@@ -35,11 +36,11 @@ int nm_init_sched(nm_cb_func func)
   nm_sched.callback = func;
 
   /** Zero initialize our calendar slots or all hell will break loose */
-  spin_lock_irqsave(&nm_calendar_lock);
+  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     SLOT_INIT(nm_sched.calendar[i]);
   }
-  spin_unlock_irqrestore(&nm_calendar_lock);
+  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
 
   nm_debug(LD_GENERAL,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
               nm_sched.callback, nm_sched.timer.function);
@@ -86,14 +87,14 @@ static void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 nm_packet_t * slot_pull(struct calendar_slot *slot)
 {
   nm_packet_t *pulled;
-  spin_lock_irqsave(&nm_calendar_lock);
+  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
 
   pulled = slot->head;
   if (pulled)
     slot->head = pulled->next;
   
   slot->n_packets--;
-  spin_unlock_irqrestore(&nm_calendar_lock);
+  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
   return pulled;
 }
 
@@ -108,9 +109,9 @@ int nm_enqueue(nm_packet_t *data,uint16_t offset)
     data->flags  = data->flags & ~NM_FLAG_HOP_INCOMPLETE;
   }
 
-  spin_lock_irqsave(&nm_calendar_lock);
+  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
   slot_add_packet(&scheduler_slot((&nm_sched),offset), data);
-  spin_unlock_irqrestore(&nm_calendar_lock);
+  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
   return 0;
 }
 
@@ -129,12 +130,12 @@ void nm_schedule(ktime_t time){
 static void __slot_free(struct calendar_slot * slot)
 {
   nm_packet_t * tofree;
-  spin_lock_irqsave(&nm_calendar_lock);
+  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
   while ((tofree = slot_pull(slot)))
   {
     nm_free(NM_PKT_ALLOC,tofree);
   }
-  spin_unlock_irqrestore(&nm_calendar_lock);
+  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
 }
 
 /** Cancel any running schedulers **/
