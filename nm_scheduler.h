@@ -14,6 +14,8 @@
     slot.n_packets = 0;\
     slot.head = 0 
 
+inline ktime_t nm_get_time(void);
+
 /** 
  * @entries   then number of entries stored into this buffer slot.
  * @head      the front of the entry list;
