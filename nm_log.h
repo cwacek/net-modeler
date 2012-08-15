@@ -37,7 +37,7 @@
 
 #if NM_DEBUG_ID <= NM_LOG_LEVEL 
 #define nm_debug(log_ld,_fmt, ...) \
-        if (log_ld & NM_LOG_LEVEL) \
+        if (log_ld & NM_ENABLED_DOMAINS) \
           printk(KERN_INFO NM_LOG_PREFIX "%s:%s: " _fmt, \
               nm_ld_string(log_ld), stringify(NM_DEBUG) ,##__VA_ARGS__) 
 #else
@@ -46,7 +46,7 @@
 
 #if NM_INFO_ID <= NM_LOG_LEVEL 
 #define nm_info(log_ld, _fmt, ...)   \
-    if (log_ld & NM_LOG_LEVEL) \
+    if (log_ld & NM_ENABLED_DOMAINS) \
           printk(KERN_INFO NM_LOG_PREFIX "%s:%s: " _fmt,  \
             nm_ld_string(log_ld), stringify(NM_INFO), ##__VA_ARGS__) 
 
@@ -56,7 +56,7 @@
 
 #if NM_NOTICE_ID <= NM_LOG_LEVEL 
 #define nm_notice(log_ld, _fmt, ...)   \
-    if (log_ld & NM_LOG_LEVEL) \
+    if (log_ld & NM_ENABLED_DOMAINS) \
           printk(KERN_INFO NM_LOG_PREFIX "%s:%s: " _fmt,  \
             nm_ld_string(log_ld), stringify(NM_NOTICE), ##__VA_ARGS__) 
 #else
@@ -65,7 +65,7 @@
 
 #if NM_WARN_ID <= NM_LOG_LEVEL 
 #define nm_warn(log_ld, _fmt, ...)   \
-    if (log_ld & NM_LOG_LEVEL) \
+    if (log_ld & NM_ENABLED_DOMAINS) \
           printk(KERN_EMERG NM_LOG_PREFIX "%s:%s: " _fmt,  \
             nm_ld_string(log_ld), stringify(NM_WARN), ##__VA_ARGS__) 
 #else
