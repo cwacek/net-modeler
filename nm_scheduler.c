@@ -12,6 +12,23 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
 static uint8_t shutdown_requested = 0;
 
+
+#if NM_LOG_LEVEL & NM_DEBUG_ID
+#define spin_lock_irq_debug(lock, flag) \
+  do { \
+    nm_debug(LD_TRACE,"Acquiring lock in %s\n",__func__); \
+    spin_lock_irqsave(lock,flag); \
+  } while(0)
+#define spin_unlock_irq_debug(lock, flag) \
+  do { \
+    nm_debug(LD_TRACE,"Releasing lock in %s\n",__func__); \
+    spin_unlock_irqrestore(lock,flag); \
+  } while(0)
+#else
+#define spin_lock_irq_debug(lock,flag) spin_lock_irqsave(lock,flag)
+#define spin_unlock_irq_debug(lock,flag) spin_unlock_irqrestore(lock,flag)
+#endif
+
 inline ktime_t nm_get_time(void){
   return nm_sched.timer.base->get_time();
 }
@@ -153,11 +170,11 @@ void nm_cleanup_sched(void)
   hrtimer_cancel(&nm_sched.timer);
   nm_notice(LD_GENERAL,"Canceled timer\n");
 
-  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
+  spin_lock_irq_debug(&nm_calendar_lock,spin_flags);
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     __slot_free(&nm_sched.calendar[i]);
   }
-  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
+  spin_unlock_irq_debug(&nm_calendar_lock,spin_flags);
   nm_notice(LD_GENERAL,"Freed slots\n");
 }
 
