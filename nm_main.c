@@ -38,6 +38,8 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
     return NF_ACCEPT;
   }
 
+  nm_debug(LD_TIMING,"Received packet at %lldns\n",ktime_to_ns(nm_get_time()));
+
   return NF_QUEUE;
 }
 
@@ -54,11 +56,10 @@ ktime_t update(struct nm_global_sched *sch)
   ktime_t now = sch->timer.base->get_time();
   log_func_entry;
   
-  nm_debug(LD_TIMING, "Callback fired at %lld\n",ktime_to_ns(now));
-
   /** Make sure we process any intervals we missed **/
   missed_intervals = ktime_to_ns(ktime_sub(now,sch->last_update)) 
                         / MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS);
+  nm_debug(LD_TIMING, "Callback fired. Missed %d intervals  ago\n",missed_intervals);
 
   for (i = 1; i <= missed_intervals; i++)
   {
@@ -83,7 +84,8 @@ ktime_t update(struct nm_global_sched *sch)
   sch->now_index += missed_intervals;
   sch->last_update = now;
 
-  nm_info(LD_GENERAL, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);
+  nm_debug(LD_TIMING, "Callback finished in %lldns\n",ktime_to_ns(ktime_sub(sch->timer.base->get_time(),now)));
+  /*nm_info(LD_GENERAL, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);*/
 
   return ktime_set(0,MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS));
 }
@@ -105,6 +107,8 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   
   if ((err = nm_enqueue(pkt,10)) < 0)
     return err;
+
+  nm_debug(LD_TIMING,"Completed packet enqueue at %lldns\n",ktime_to_ns(nm_get_time()));
 
   return 0;
 }
