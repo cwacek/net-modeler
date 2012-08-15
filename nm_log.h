@@ -31,7 +31,7 @@
 
 /** Enabled logging levels **/
 #define NM_LOG_LEVEL NM_DEBUG_ID
-#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR )// | LD_TIMING
+#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR  |  LD_TRACE )
 
 #define stringify(x) #x
 
