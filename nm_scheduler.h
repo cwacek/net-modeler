@@ -12,7 +12,7 @@
 
 #define SLOT_INIT(slot) \
     slot.n_packets = 0;\
-    slot.head = slot.tail = 0 
+    slot.head = 0 
 
 /** 
  * @entries   then number of entries stored into this buffer slot.
@@ -22,7 +22,6 @@
 struct calendar_slot { 
   uint16_t n_packets;
   nm_packet_t *head;
-  nm_packet_t *tail;
 };
 
 
