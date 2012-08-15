@@ -9,6 +9,7 @@
 
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
+static DEFINE_SPINLOCK(nm_calendar_lock);
 
 /** Initialize the global scheduler with the callback function 'func'.
  *
@@ -30,9 +31,11 @@ int nm_init_sched(nm_cb_func func)
   nm_sched.callback = func;
 
   /** Zero initialize our calendar slots or all hell will break loose */
+  spin_lock(&nm_calendar_lock);
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     SLOT_INIT(nm_sched.calendar[i]);
   }
+  spin_unlock(&nm_calendar_lock);
 
   nm_debug(LD_GENERAL,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
               nm_sched.callback, nm_sched.timer.function);
@@ -88,6 +91,7 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
   if (slot->n_packets == 0){
     pulled = 0;
   } else {
+    spin_lock(&nm_calendar_lock);
     pulled = slot->tail;
     slot->tail = (pulled->prev != 0) ? pulled->prev : 0;
     pulled->prev = pulled->next = 0;
@@ -98,6 +102,7 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
       /** In this case, there's something in the list, so we want to make sure the end of it ends. **/
       slot->tail->next = 0;
     }
+    spin_unlock(&nm_calendar_lock);
   }
 
   return pulled;
@@ -114,7 +119,9 @@ int nm_enqueue(nm_packet_t *data,uint16_t offset)
     data->flags  = data->flags & ~NM_FLAG_HOP_INCOMPLETE;
   }
 
+  spin_lock(&nm_calendar_lock);
   slot_add_packet(&scheduler_slot((&nm_sched),offset), data);
+  spin_unlock(&nm_calendar_lock);
   return 0;
 }
 
@@ -133,10 +140,12 @@ void nm_schedule(ktime_t time){
 static void __slot_free(struct calendar_slot * slot)
 {
   nm_packet_t * tofree;
+  spin_lock(&nm_calendar_lock);
   while ((tofree = slot_pull(slot)))
   {
     nm_free(NM_PKT_ALLOC,tofree);
   }
+  spin_unlock(&nm_calendar_lock);
 }
 
 /** Cancel any running schedulers **/
