@@ -12,13 +12,10 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
 static unsigned long spin_flags = 0;
 
-inline ktime_t get_time(void){
+inline ktime_t nm_get_time(void){
   return nm_sched.timer.base->get_time();
 }
 
-inline ktime_t get_time(void){
-  return nm_sched.timer.base->get_time();
-}
 
 /** Initialize the global scheduler with the callback function 'func'.
  *
