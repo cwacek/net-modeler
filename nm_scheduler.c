@@ -16,6 +16,10 @@ inline ktime_t get_time(void){
   return nm_sched.timer.base->get_time();
 }
 
+inline ktime_t get_time(void){
+  return nm_sched.timer.base->get_time();
+}
+
 /** Initialize the global scheduler with the callback function 'func'.
  *
  *  The callback function should do whatever it wants to do, then
