@@ -85,17 +85,19 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
 {
   nm_packet_t *pulled;
 
-  nm_debug(LD_GENERAL, "Pulling from slot with %u packets in it\n", slot->n_packets);
-
   if (slot->n_packets == 0){
     pulled = 0;
   } else {
     pulled = slot->tail;
     slot->tail = (pulled->prev != 0) ? pulled->prev : 0;
     pulled->prev = pulled->next = 0;
-    slot->tail->next = 0;
-    if (--slot->n_packets == 0)
+    if (--slot->n_packets == 0){
       slot->head = 0;
+    }
+    else { 
+      /** In this case, there's something in the list, so we want to make sure the end of it ends. **/
+      slot->tail->next = 0;
+    }
   }
 
   return pulled;

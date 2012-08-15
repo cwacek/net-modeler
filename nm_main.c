@@ -81,6 +81,7 @@ ktime_t update(struct nm_global_sched *sch)
   }
 
   sch->now_index += missed_intervals;
+  sch->last_update = now;
 
   nm_info(LD_GENERAL, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);
 
