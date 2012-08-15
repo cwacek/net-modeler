@@ -70,15 +70,10 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
 /** Add a packet to the slot */
 static void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 {
-  if (slot->n_packets == 0)
-  {
-    slot->head = p;
-    slot->tail = p;
-  } else {
-    slot->tail->next = p;
-    p->prev = slot->tail;
-    slot->tail = p;
-  }
+  if (slot->head)
+    p->next = slot->head;
+
+  slot->head = p;
   slot->n_packets++;
 }
 
@@ -87,24 +82,14 @@ static void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 nm_packet_t * slot_pull(struct calendar_slot *slot)
 {
   nm_packet_t *pulled;
+  spin_lock_irqsave(&nm_calendar_lock);
 
-  if (slot->n_packets == 0){
-    pulled = 0;
-  } else {
-    spin_lock_irqsave(&nm_calendar_lock);
-    pulled = slot->tail;
-    slot->tail = (pulled->prev != 0) ? pulled->prev : 0;
-    pulled->prev = pulled->next = 0;
-    if (--slot->n_packets == 0){
-      slot->head = 0;
-    }
-    else { 
-      /** In this case, there's something in the list, so we want to make sure the end of it ends. **/
-      slot->tail->next = 0;
-    }
-    spin_unlock_irqrestore(&nm_calendar_lock);
-  }
-
+  pulled = slot->head;
+  if (pulled)
+    slot->head = pulled->next;
+  
+  slot->n_packets--;
+  spin_unlock_irqrestore(&nm_calendar_lock);
   return pulled;
 }
 
