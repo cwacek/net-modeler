@@ -147,11 +147,16 @@ static int __init nm_init(void)
 
 static void nm_exit(void)
 {
+  nm_notice(LD_GENERAL,"Cleaning up\n");
   nm_cleanup_sched();
+  nm_notice(LD_GENERAL,"scheduler cleaned\n");
   /*nm_cleanup_injector();*/
   nf_unregister_hook(&nfho);
+  nm_notice(LD_GENERAL,"netfilter unhooked\n");
   nf_unregister_queue_handler(PF_INET,&_queueh);
+  nm_notice(LD_GENERAL,"netfilter queuehandler unregistered\n");
   nm_structures_release();
+  nm_notice(LD_GENERAL,"structures released\n");
   printk(KERN_INFO "net-modeler cleaning up\n");
 }
 
