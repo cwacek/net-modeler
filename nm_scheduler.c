@@ -77,7 +77,7 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
 }
 
 /** Add a packet to the slot */
-static void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
+static inline void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 {
   if (slot->head)
     p->next = slot->head;
@@ -134,7 +134,7 @@ void nm_schedule(ktime_t time){
   }
 }
 
-static void __slot_free(struct calendar_slot * slot)
+static inline void __slot_free(struct calendar_slot * slot)
 {
   nm_packet_t * tofree;
   while ((tofree = slot_pull(slot)))
