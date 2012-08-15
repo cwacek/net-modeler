@@ -11,6 +11,7 @@ struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
 static unsigned long spin_flags = 0;
+static uint8_t shutdown_requested = 0;
 
 inline ktime_t nm_get_time(void){
   return nm_sched.timer.base->get_time();
@@ -56,6 +57,8 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
 {
   ktime_t interval;
   log_func_entry;
+  if (shutdown_requested)
+    return HRTIMER_NORESTART;
 
   /*if (hrtimer_in(hrt)){*/
     /*nm_log(NM_NOTICE,"Timer callback called, but timer was in active state.\n");*/
@@ -143,10 +146,13 @@ static void __slot_free(struct calendar_slot * slot)
 void nm_cleanup_sched(void)
 {
   int i;
+  shutdown_requested = 1;
   hrtimer_cancel(&nm_sched.timer);
+  nm_notice(LD_GENERAL,"Canceled timer\n");
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     __slot_free(&nm_sched.calendar[i]);
   }
+  nm_notice(LD_GENERAL,"Freed slots\n");
 }
 
 MODULE_LICENSE("GPL");
