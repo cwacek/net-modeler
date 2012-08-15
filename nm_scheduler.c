@@ -10,7 +10,6 @@
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
-static unsigned long spin_flags = 0;
 static uint8_t shutdown_requested = 0;
 
 inline ktime_t nm_get_time(void){
@@ -31,6 +30,7 @@ inline ktime_t nm_get_time(void){
 int nm_init_sched(nm_cb_func func)
 {
   int i;
+  unsigned long spin_flags;
   log_func_entry;
 
   hrtimer_init(&nm_sched.timer,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -91,6 +91,7 @@ static void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 nm_packet_t * slot_pull(struct calendar_slot *slot)
 {
   nm_packet_t *pulled;
+  unsigned long spin_flags;
   spin_lock_irqsave(&nm_calendar_lock,spin_flags);
 
   pulled = slot->head;
@@ -105,6 +106,8 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
 /** Enqueue a packet into the calendar at an offset from now **/
 int nm_enqueue(nm_packet_t *data,uint16_t offset)
 {
+  unsigned long spin_flags;
+
   if (!one_hop_schedulable(offset)){
     offset = CALENDAR_BUF_LEN;
     data->hop_progress += CALENDAR_BUF_LEN;
@@ -134,24 +137,27 @@ void nm_schedule(ktime_t time){
 static void __slot_free(struct calendar_slot * slot)
 {
   nm_packet_t * tofree;
-  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
   while ((tofree = slot_pull(slot)))
   {
     nm_free(NM_PKT_ALLOC,tofree);
   }
-  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
 }
 
 /** Cancel any running schedulers **/
 void nm_cleanup_sched(void)
 {
   int i;
+  unsigned long spin_flags;
+
   shutdown_requested = 1;
   hrtimer_cancel(&nm_sched.timer);
   nm_notice(LD_GENERAL,"Canceled timer\n");
+
+  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     __slot_free(&nm_sched.calendar[i]);
   }
+  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
   nm_notice(LD_GENERAL,"Freed slots\n");
 }
 
