@@ -38,6 +38,8 @@ revision:
 clean:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) clean
 	
+tags:
+	ctags *.c *.h
 
 install: all uninstall
 	sudo insmod net-modeler.ko
