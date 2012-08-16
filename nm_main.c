@@ -61,7 +61,7 @@ ktime_t update(struct nm_global_sched *sch)
   /** Make sure we process any intervals we missed **/
   missed_intervals = ktime_to_ns(ktime_sub(now,sch->last_update)) 
                         / MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS);
-  nm_debug(LD_TIMING, "Callback fired. Missed %d intervals  ago\n",missed_intervals);
+  nm_debug(LD_TIMING, "Callback fired. Missed %d intervals \n",missed_intervals);
 
   for (i = 1; i <= missed_intervals; i++)
   {
@@ -91,7 +91,7 @@ ktime_t update(struct nm_global_sched *sch)
   sch->now_index += missed_intervals;
   sch->last_update = now;
 
-  nm_debug(LD_TIMING, "Callback finished in %lldns\n",ktime_to_ns(ktime_sub(sch->timer.base->get_time(),now)));
+  /*nm_debug(LD_TIMING, "Callback finished in %lldns\n",ktime_to_ns(ktime_sub(sch->timer.base->get_time(),now)));*/
   /*nm_info(LD_GENERAL, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);*/
 
   return ktime_set(0,MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS));
