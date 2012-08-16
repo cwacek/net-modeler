@@ -33,7 +33,7 @@ module:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
 
 revision:
-	@echo "#define VERSION \"$(shell git describe --tags)\"" > version.i 
+	@echo "#define VERSION \"alpha-0.0.2\"" > version.i 
 
 clean:
 	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) clean
