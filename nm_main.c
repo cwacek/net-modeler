@@ -109,10 +109,10 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
                        queue_entry_iph(entry)->saddr, 
                        queue_entry_iph(entry)->daddr);
   
-  if (!pkt)
+  if (unlikely(!pkt))
     return -ENOMEM;
   
-  if ((err = nm_enqueue(pkt,10)) < 0)
+  if (unlikely((err = nm_enqueue(pkt,10)) < 0))
     return err;
 
   nm_debug(LD_TIMING,"Completed packet enqueue at %lldns\n",ktime_to_ns(nm_get_time()));

@@ -138,9 +138,9 @@ int nm_enqueue(nm_packet_t *data,uint16_t offset)
     data->flags  = data->flags & ~NM_FLAG_HOP_INCOMPLETE;
   }
 
-  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
+  spin_lock(&nm_calendar_lock);
   slot_add_packet(&scheduler_slot((&nm_sched),offset), data);
-  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
+  spin_unlock(&nm_calendar_lock);
   return 0;
 }
 
