@@ -63,12 +63,16 @@ ktime_t update(struct nm_global_sched *sch)
                         / MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS);
   nm_debug(LD_TIMING, "Callback fired. Missed %d intervals  ago\n",missed_intervals);
 
-  nm_schedule_lock_acquire(lock_flags);
   for (i = 1; i <= missed_intervals; i++)
   {
     /** We dequeue everything in the slot one at at time **/
-    while (( pkt = slot_pull(&scheduler_slot(sch,i))))
-    {
+    while (1)
+    {       
+      nm_schedule_lock_acquire(lock_flags);
+      pkt = slot_pull(&scheduler_slot(sch,i));
+      nm_schedule_lock_release(lock_flags);
+      if (!pkt)
+        break;
       if (pkt->flags & NM_FLAG_HOP_INCOMPLETE) {
         /** If this was a hop in progress, we want to enqueue rather than
          * reinject **/
@@ -83,7 +87,6 @@ ktime_t update(struct nm_global_sched *sch)
       }
     }
   }
-  nm_schedule_lock_release(lock_flags);
 
   sch->now_index += missed_intervals;
   sch->last_update = now;
