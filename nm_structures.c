@@ -9,7 +9,7 @@ void nm_structures_init()
 {
   nm_objects.NM_PKT_ALLOC = kmem_cache_create("nm_packets",
                                             sizeof(nm_packet_t),
-                                            0, 0, NULL);
+                                            0, SLAB_HWCACHE_ALIGN, NULL);
   nm_objects.SOCKADDR_ALLOC = kmem_cache_create("sockaddrs",
                                             sizeof(struct sockaddr_in),
                                             0, 0, NULL);
