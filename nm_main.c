@@ -53,14 +53,17 @@ ktime_t update(struct nm_global_sched *sch)
 {
   struct nm_packet *pkt;
   int missed_intervals, i, dequeued_ctr = 0;
+  unsigned long lock_flags;
   ktime_t now = sch->timer.base->get_time();
   log_func_entry;
+  lock_flags = 0;
   
   /** Make sure we process any intervals we missed **/
   missed_intervals = ktime_to_ns(ktime_sub(now,sch->last_update)) 
                         / MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS);
   nm_debug(LD_TIMING, "Callback fired. Missed %d intervals  ago\n",missed_intervals);
 
+  nm_schedule_lock_acquire(lock_flags);
   for (i = 1; i <= missed_intervals; i++)
   {
     /** We dequeue everything in the slot one at at time **/
@@ -80,6 +83,7 @@ ktime_t update(struct nm_global_sched *sch)
       }
     }
   }
+  nm_schedule_lock_release(lock_flags);
 
   sch->now_index += missed_intervals;
   sch->last_update = now;

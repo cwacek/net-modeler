@@ -28,6 +28,15 @@ static uint8_t shutdown_requested = 0;
 #define spin_unlock_irq_debug(lock,flag) spin_unlock_irqrestore(lock,flag)
 #endif
 
+void nm_schedule_lock_release(unsigned long flags)
+{
+  spin_unlock_irq_debug(&nm_calendar_lock,flags);
+}
+void nm_schedule_lock_acquire(unsigned long flags)
+{
+  spin_lock_irq_debug(&nm_calendar_lock,flags);
+}
+
 inline ktime_t nm_get_time(void){
   return nm_sched.timer.base->get_time();
 }
@@ -107,15 +116,12 @@ static inline void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 nm_packet_t * slot_pull(struct calendar_slot *slot)
 {
   nm_packet_t *pulled;
-  unsigned long spin_flags;
-  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
 
   pulled = slot->head;
   if (pulled)
     slot->head = pulled->next;
   
   slot->n_packets--;
-  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
   return pulled;
 }
 
@@ -169,9 +175,11 @@ void nm_cleanup_sched(void)
   hrtimer_cancel(&nm_sched.timer);
   nm_notice(LD_GENERAL,"Canceled timer\n");
 
+  spin_lock_irq_debug(&nm_calendar_lock,spin_flags);
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     __slot_free(&nm_sched.calendar[i]);
   }
+  spin_unlock_irq_debug(&nm_calendar_lock,spin_flags);
   nm_notice(LD_GENERAL,"Freed slots\n");
 }
 
