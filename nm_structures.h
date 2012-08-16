@@ -16,7 +16,6 @@ struct nm_packet {
   uint16_t flags;
   /** Linked list helpers **/
   struct nm_packet *next;
-  struct nm_packet *prev;
 };
 typedef struct nm_packet nm_packet_t;
 
