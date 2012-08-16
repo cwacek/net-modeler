@@ -2,6 +2,7 @@
 #define __KERN_NM_MODELER
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/atomic.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter_ipv4.h>
 #include <linux/skbuff.h>

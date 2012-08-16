@@ -128,8 +128,6 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
 /** Enqueue a packet into the calendar at an offset from now **/
 int nm_enqueue(nm_packet_t *data,uint16_t offset)
 {
-  unsigned long spin_flags;
-
   if (unlikely(!one_hop_schedulable(offset))){
     offset = CALENDAR_BUF_LEN;
     data->hop_progress += CALENDAR_BUF_LEN;
