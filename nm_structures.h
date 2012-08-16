@@ -1,11 +1,21 @@
 #ifndef __KERN_NM_STRUCTURES
 #define __KERN_NM_STRUCTURES
 
+/** The packet flagged this way is in the middle of an incomplete hop **/
+#define NM_FLAG_HOP_INCOMPLETE 1
+
 struct nm_packet {
-  void *data;
-  uint32_t len;
+  struct nf_queue_entry *data;
+  /** The ID of the path we're looking for */
   uint32_t path_id;
-  uint32_t path_idx;
+  /** The hop index on the current path */
+  uint32_t path_idx;               
+  /* Keep track of how far we've scheduled for hops
+   * longer than the max scheduler */
+  uint16_t hop_progress; 
+  uint16_t flags;
+  /** Linked list helpers **/
+  struct nm_packet *next;
 };
 typedef struct nm_packet nm_packet_t;
 
@@ -31,7 +41,7 @@ extern struct nm_obj_cache nm_objects;
  * _len_ and src and dst appropriately 
  **/
 nm_packet_t * 
-nm_packet_init(void * data, uint32_t len, uint32_t src, uint32_t dst);
+nm_packet_init(struct nf_queue_entry *data,  uint32_t src, uint32_t dst);
 
 /** Free a packet **/
 void nm_packet_free(nm_packet_t *pkt);

@@ -9,7 +9,7 @@ void nm_structures_init()
 {
   nm_objects.NM_PKT_ALLOC = kmem_cache_create("nm_packets",
                                             sizeof(nm_packet_t),
-                                            0, 0, NULL);
+                                            0, SLAB_HWCACHE_ALIGN, NULL);
   nm_objects.SOCKADDR_ALLOC = kmem_cache_create("sockaddrs",
                                             sizeof(struct sockaddr_in),
                                             0, 0, NULL);
@@ -30,30 +30,28 @@ void nm_structures_release()
 }
 
 nm_packet_t *
-nm_packet_init(void *data,uint32_t len,uint32_t src,uint32_t dst)
+nm_packet_init(struct nf_queue_entry *data,uint32_t src,uint32_t dst)
 {
   nm_packet_t *pkt = nm_alloc(NM_PKT_ALLOC,GFP_ATOMIC);
-  pkt->data = kmalloc(len,GFP_ATOMIC);
-  memcpy(pkt->data,data,len);
-
-  pkt->len = len;
+  pkt->data = data;
   pkt->path_idx = 0;
   pkt->path_id = _lookup_path(src,dst);
+  pkt->hop_progress = pkt->flags = 0;
+  pkt->next = 0;
 
   return pkt;
 }
 
 void nm_packet_free(nm_packet_t *pkt)
 {
-  kfree(pkt->data);
   nm_free(NM_PKT_ALLOC,pkt);
   return;
 }
 
-static uint32_t 
+static inline uint32_t 
 _lookup_path(uint32_t src,uint32_t dst)
 {
-  nm_log(NM_WARN,"_lookup_path not implemented\n");
+  /*nm_warn(LD_ERROR,"_lookup_path not implemented\n");*/
   return 0;
 }
 

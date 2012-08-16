@@ -1,13 +1,46 @@
-
 #include <linux/module.h>
 #include <linux/hrtimer.h>
 
 #include "nm_log.h"
+#include "nm_structures.h"
 #include "nm_magic.h"
 #include "nm_main.h"
 
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
+static DEFINE_SPINLOCK(nm_calendar_lock);
+static uint8_t shutdown_requested = 0;
+
+
+#if NM_LOG_LEVEL & NM_DEBUG_ID
+#define spin_lock_irq_debug(lock, flag) \
+  do { \
+    nm_debug(LD_TRACE,"Acquiring lock in %s\n",__func__); \
+    spin_lock_irqsave(lock,flag); \
+  } while(0)
+#define spin_unlock_irq_debug(lock, flag) \
+  do { \
+    nm_debug(LD_TRACE,"Releasing lock in %s\n",__func__); \
+    spin_unlock_irqrestore(lock,flag); \
+  } while(0)
+#else
+#define spin_lock_irq_debug(lock,flag) spin_lock_irqsave(lock,flag)
+#define spin_unlock_irq_debug(lock,flag) spin_unlock_irqrestore(lock,flag)
+#endif
+
+void nm_schedule_lock_release(unsigned long flags)
+{
+  spin_unlock_irq_debug(&nm_calendar_lock,flags);
+}
+void nm_schedule_lock_acquire(unsigned long flags)
+{
+  spin_lock_irq_debug(&nm_calendar_lock,flags);
+}
+
+inline ktime_t nm_get_time(void){
+  return nm_sched.timer.base->get_time();
+}
+
 
 /** Initialize the global scheduler with the callback function 'func'.
  *
@@ -21,23 +54,23 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
  **/
 int nm_init_sched(nm_cb_func func)
 {
-  int ret;
+  int i;
+  unsigned long spin_flags;
   log_func_entry;
 
   hrtimer_init(&nm_sched.timer,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
   nm_sched.timer.function = __nm_callback;
   nm_sched.callback = func;
 
-  nm_sched.calendar = kmalloc(sizeof(struct kfifo),GFP_KERNEL);
+  /** Zero initialize our calendar slots or all hell will break loose */
+  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
+  for (i = 0; i < CALENDAR_BUF_LEN; i++){
+    SLOT_INIT(nm_sched.calendar[i]);
+  }
+  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
 
-  ret = kfifo_alloc(nm_sched.calendar,CALENDAR_SIZE,GFP_KERNEL);
-  if (!ret)
-    return -ret;
-
-  nm_log(NM_DEBUG,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
+  nm_debug(LD_GENERAL,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
               nm_sched.callback, nm_sched.timer.function);
-
-
   return 0;
 }
 
@@ -49,6 +82,8 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
 {
   ktime_t interval;
   log_func_entry;
+  if (shutdown_requested)
+    return HRTIMER_NORESTART;
 
   /*if (hrtimer_in(hrt)){*/
     /*nm_log(NM_NOTICE,"Timer callback called, but timer was in active state.\n");*/
@@ -56,28 +91,57 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
   /*}*/
 
   interval = nm_sched.callback(&nm_sched);
+  if (unlikely(ktime_to_ns(interval) == 0))
+    return HRTIMER_NORESTART;
 
-  if (hrtimer_start(&nm_sched.timer,interval,HRTIMER_MODE_REL) < 0){
-    nm_log(NM_NOTICE,"Failed to schedule timer\n");
+  if (unlikely(hrtimer_start(&nm_sched.timer,interval,HRTIMER_MODE_ABS) < 0)){
+    nm_notice(LD_ERROR,"Failed to schedule timer\n");
     return HRTIMER_NORESTART;
   }
   return HRTIMER_NORESTART;
 }
 
-int nm_enqueue(void *data,size_t len)
+/** Add a packet to the slot */
+static inline void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 {
-  int enqueued;
-  log_func_entry;
+  if (slot->head)
+    p->next = slot->head;
 
-  enqueued = kfifo_in(nm_sched.calendar,data,len);
+  slot->head = p;
+  slot->n_packets++;
+}
 
-  if (enqueued != len){
-    nm_log(NM_WARN,"Failed to enqueue data. Wanted: %zu; Got: %u\n",
-                len,enqueued);
+/** Pull a nm_packet_t from the calendar slot, or return
+ * zero if none exist */
+nm_packet_t * slot_pull(struct calendar_slot *slot)
+{
+  nm_packet_t *pulled;
+
+  pulled = slot->head;
+  if (pulled)
+    slot->head = pulled->next;
+  
+  slot->n_packets--;
+  return pulled;
+}
+
+/** Enqueue a packet into the calendar at an offset from now **/
+int nm_enqueue(nm_packet_t *data,uint16_t offset)
+{
+  unsigned long spin_flags;
+
+  if (unlikely(!one_hop_schedulable(offset))){
+    offset = CALENDAR_BUF_LEN;
+    data->hop_progress += CALENDAR_BUF_LEN;
+    data->flags |= NM_FLAG_HOP_INCOMPLETE; 
+  } else {
+    data->flags  = data->flags & ~NM_FLAG_HOP_INCOMPLETE;
   }
-  nm_log(NM_DEBUG,"Queue now contains %u elements\n",kfifo_len(nm_sched.calendar));
 
-  return enqueued;
+  spin_lock(&nm_calendar_lock);
+  slot_add_packet(&scheduler_slot((&nm_sched),offset), data);
+  spin_unlock(&nm_calendar_lock);
+  return 0;
 }
 
 /** Cancels any running schedulers if they are for a time
@@ -86,17 +150,37 @@ int nm_enqueue(void *data,size_t len)
 void nm_schedule(ktime_t time){
   log_func_entry;
   
-  if (hrtimer_start(&nm_sched.timer,time,HRTIMER_MODE_REL) < 0){
-    nm_log(NM_WARN,"Failed to schedule timer for %lldns from now\n",
+  if (unlikely(hrtimer_start(&nm_sched.timer,time,HRTIMER_MODE_REL) < 0)){
+    nm_warn(LD_ERROR,"Failed to schedule timer for %lldns from now\n",
                 ktime_to_ns(time));
+  }
+}
+
+static inline void __slot_free(struct calendar_slot * slot)
+{
+  nm_packet_t * tofree;
+  while ((tofree = slot_pull(slot)))
+  {
+    nm_free(NM_PKT_ALLOC,tofree);
   }
 }
 
 /** Cancel any running schedulers **/
 void nm_cleanup_sched(void)
 {
-  log_func_entry;
+  int i;
+  unsigned long spin_flags;
+
+  shutdown_requested = 1;
   hrtimer_cancel(&nm_sched.timer);
+  nm_notice(LD_GENERAL,"Canceled timer\n");
+
+  spin_lock_irq_debug(&nm_calendar_lock,spin_flags);
+  for (i = 0; i < CALENDAR_BUF_LEN; i++){
+    __slot_free(&nm_sched.calendar[i]);
+  }
+  spin_unlock_irq_debug(&nm_calendar_lock,spin_flags);
+  nm_notice(LD_GENERAL,"Freed slots\n");
 }
 
 MODULE_LICENSE("GPL");
