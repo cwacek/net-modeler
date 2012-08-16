@@ -91,10 +91,10 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
   /*}*/
 
   interval = nm_sched.callback(&nm_sched);
-  if (ktime_to_ns(interval) == 0)
+  if (unlikely(ktime_to_ns(interval) == 0))
     return HRTIMER_NORESTART;
 
-  if (hrtimer_start(&nm_sched.timer,ktime_add(interval,hrt->base->get_time()),HRTIMER_MODE_ABS) < 0){
+  if (unlikely(hrtimer_start(&nm_sched.timer,interval,HRTIMER_MODE_ABS) < 0)){
     nm_notice(LD_ERROR,"Failed to schedule timer\n");
     return HRTIMER_NORESTART;
   }
@@ -130,7 +130,7 @@ int nm_enqueue(nm_packet_t *data,uint16_t offset)
 {
   unsigned long spin_flags;
 
-  if (!one_hop_schedulable(offset)){
+  if (unlikely(!one_hop_schedulable(offset))){
     offset = CALENDAR_BUF_LEN;
     data->hop_progress += CALENDAR_BUF_LEN;
     data->flags |= NM_FLAG_HOP_INCOMPLETE; 
@@ -150,7 +150,7 @@ int nm_enqueue(nm_packet_t *data,uint16_t offset)
 void nm_schedule(ktime_t time){
   log_func_entry;
   
-  if (hrtimer_start(&nm_sched.timer,time,HRTIMER_MODE_REL) < 0){
+  if (unlikely(hrtimer_start(&nm_sched.timer,time,HRTIMER_MODE_REL) < 0)){
     nm_warn(LD_ERROR,"Failed to schedule timer for %lldns from now\n",
                 ktime_to_ns(time));
   }

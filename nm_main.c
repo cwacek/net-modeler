@@ -73,7 +73,7 @@ ktime_t update(struct nm_global_sched *sch)
       nm_schedule_lock_release(lock_flags);
       if (!pkt)
         break;
-      if (pkt->flags & NM_FLAG_HOP_INCOMPLETE) {
+      if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) {
         /** If this was a hop in progress, we want to enqueue rather than
          * reinject **/
         /*nm_enqueue(pkt,path_dist(path_id,path_idx) - pkt->hop_progress);*/
