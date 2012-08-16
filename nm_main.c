@@ -94,7 +94,7 @@ ktime_t update(struct nm_global_sched *sch)
   /*nm_debug(LD_TIMING, "Callback finished in %lldns\n",ktime_to_ns(ktime_sub(sch->timer.base->get_time(),now)));*/
   /*nm_info(LD_GENERAL, "Dequeued %u packets from %u intervals \n",dequeued_ctr,missed_intervals);*/
 
-  return ktime_set(0,MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS));
+  return ktime_add_ns(now,MSECS_TO_NSECS(UPDATE_INTERVAL_MSECS));
 }
 
 static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
