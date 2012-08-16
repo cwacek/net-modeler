@@ -1,4 +1,3 @@
-
 #include <linux/module.h>
 #include <linux/hrtimer.h>
 
@@ -170,11 +169,9 @@ void nm_cleanup_sched(void)
   hrtimer_cancel(&nm_sched.timer);
   nm_notice(LD_GENERAL,"Canceled timer\n");
 
-  spin_lock_irq_debug(&nm_calendar_lock,spin_flags);
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     __slot_free(&nm_sched.calendar[i]);
   }
-  spin_unlock_irq_debug(&nm_calendar_lock,spin_flags);
   nm_notice(LD_GENERAL,"Freed slots\n");
 }
 
