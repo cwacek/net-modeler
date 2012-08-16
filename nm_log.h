@@ -30,8 +30,8 @@
 #define NM_LOG_PREFIX "net-modeler:"
 
 /** Enabled logging levels **/
-#define NM_LOG_LEVEL NM_DEBUG_ID
-#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR  |  LD_TRACE )
+#define NM_LOG_LEVEL NM_INFO_ID
+#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR  |  LD_TIMING )
 
 #define stringify(x) #x
 
