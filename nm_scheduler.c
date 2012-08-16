@@ -61,6 +61,7 @@ int nm_init_sched(nm_cb_func func)
   hrtimer_init(&nm_sched.timer,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
   nm_sched.timer.function = __nm_callback;
   nm_sched.callback = func;
+  atomic64_set(&nm_sched.now_index,0);
 
   /** Zero initialize our calendar slots or all hell will break loose */
   spin_lock_irqsave(&nm_calendar_lock,spin_flags);
@@ -179,6 +180,10 @@ void nm_cleanup_sched(void)
   }
   spin_unlock_irq_debug(&nm_calendar_lock,spin_flags);
   nm_notice(LD_GENERAL,"Freed slots\n");
+}
+
+inline uint64_t scheduler_index(void){
+  return atomic64_read(&nm_sched.now_index);
 }
 
 MODULE_LICENSE("GPL");

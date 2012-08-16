@@ -8,13 +8,14 @@
 #define CALENDAR_BUF_LEN 500
 #define CALENDAR_MSECS  CALENDAR_BUF_LEN / UPDATE_INTERVAL_MSECS 
 #define one_hop_schedulable(offset) (offset < CALENDAR_BUF_LEN) ? 1 : 0
-#define scheduler_slot(scheduler, offset) (scheduler->calendar[(offset + scheduler->now_index) % CALENDAR_BUF_LEN])
+#define scheduler_slot(scheduler, offset) (scheduler->calendar[(offset + atomic64_read(&scheduler->now_index)) % CALENDAR_BUF_LEN])
 
 #define SLOT_INIT(slot) \
     slot.n_packets = 0;\
     slot.head = 0 
 
 inline ktime_t nm_get_time(void);
+inline uint64_t scheduler_index(void);
 void nm_schedule_lock_release(unsigned long flags);
 void nm_schedule_lock_acquire(unsigned long flags);
 
@@ -38,7 +39,7 @@ struct calendar_slot {
  **/
 struct nm_global_sched {
   struct calendar_slot calendar[CALENDAR_BUF_LEN];
-  uint32_t now_index;
+  atomic64_t now_index;
   ktime_t last_update;
   struct hrtimer timer;
   ktime_t (*callback)(struct nm_global_sched *);

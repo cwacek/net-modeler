@@ -88,7 +88,7 @@ ktime_t update(struct nm_global_sched *sch)
     }
   }
 
-  sch->now_index += missed_intervals;
+  atomic64_add(missed_intervals,&sch->now_index);
   sch->last_update = now;
 
   /*nm_debug(LD_TIMING, "Callback finished in %lldns\n",ktime_to_ns(ktime_sub(sch->timer.base->get_time(),now)));*/
@@ -101,6 +101,9 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
 {
   nm_packet_t *pkt; 
   int err;
+  uint64_t index;
+
+  index = scheduler_index();
 
   nm_debug(LD_GENERAL,"Enqueuing new packet. "IPH_FMT"\n",
                     IPH_FMT_DATA(queue_entry_iph(entry)));
@@ -112,7 +115,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   if (unlikely(!pkt))
     return -ENOMEM;
   
-  if (unlikely((err = nm_enqueue(pkt,10)) < 0))
+  if (unlikely((err = nm_enqueue(pkt,10 - (scheduler_index() - index))) < 0))
     return err;
 
   nm_debug(LD_TIMING,"Completed packet enqueue at %lldns\n",ktime_to_ns(nm_get_time()));
