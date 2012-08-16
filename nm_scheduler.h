@@ -12,7 +12,11 @@
 
 #define SLOT_INIT(slot) \
     slot.n_packets = 0;\
-    slot.head = slot.tail = 0 
+    slot.head = 0 
+
+inline ktime_t nm_get_time(void);
+void nm_schedule_lock_release(unsigned long flags);
+void nm_schedule_lock_acquire(unsigned long flags);
 
 /** 
  * @entries   then number of entries stored into this buffer slot.
@@ -22,7 +26,6 @@
 struct calendar_slot { 
   uint16_t n_packets;
   nm_packet_t *head;
-  nm_packet_t *tail;
 };
 
 
