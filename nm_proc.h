@@ -6,12 +6,12 @@
 
 #define pathtable NM_PROC_PATHTABLE
 #define hoptable NM_PROC_HOPTABLE
-#define modelstats NM_PROC_MODELSTATS
+#define modelinfo NM_PROC_MODELSTATS
 
 enum nm_proc_entries{
   pathtable,
   hoptable,
-  modelstat,
+  modelinfo,
   __NM_PROC_LEN,
 };
 

@@ -3,7 +3,7 @@
 static struct proc_dir_entry *nm_proc_root;
 static struct proc_dir_entry *nm_entries[__NM_PROC_LEN];
 
-static int read_modelstat(char *page, char **start, off_t off, int count, int *eof, void *data)
+static int read_modelinfo(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
   int len;
   if (nm_model_details.valid) 
@@ -19,7 +19,7 @@ static int read_modelstat(char *page, char **start, off_t off, int count, int *e
   return len;
 }
 
-static int write_modelstat(struct file *filp, const char __user *buf, unsigned long len, void *data)
+static int write_modelinfo(struct file *filp, const char __user *buf, unsigned long len, void *data)
 {
 
   if ( len > sizeof(nm_model_details_t))
@@ -47,7 +47,7 @@ int initialize_proc_interface(void)
   {
     /*CREATE_ENTRY(pathtable,nm_proc_root);*/
     /*CREATE_ENTRY(hoptable,nm_proc_root);*/
-    CREATE_ENTRY(nm_entries,modelstat,nm_proc_root);
+    CREATE_ENTRY(nm_entries,modelinfo,nm_proc_root);
   }
 
   if (ret < 0)
