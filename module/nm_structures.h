@@ -64,7 +64,7 @@ struct nm_path {
   uint32_t src;
   uint32_t dst;
   uint8_t len;
-  nm_hop_t *hops;
+  uint32_t *hops;
 };
 typedef struct nm_path nm_path_t;
 

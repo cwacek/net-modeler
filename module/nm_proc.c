@@ -50,16 +50,69 @@ static int write_modelinfo(struct file *filp, const char __user *buf, unsigned l
   return len;
 }
 
+static int read_pathtable(char *page, char **start, off_t off, int count, int *eof, void *data)
+{
+  return -EINVAL;
+}
+
+static int write_pathtable(struct file *filp, const char __user *buf, unsigned long len, void *data)
+{
+  nm_path_t path;
+  size_t hops_offset;
+  hops_offset = sizeof(nm_path_t) - sizeof(nm_hop_t *) ;
+
+  if (!nm_model._initialized)
+  {
+    nm_warn(LD_ERROR,"Must provide 'modelinfo' before attempting to load paths.\n");
+    return -EINVAL;
+  }
+
+  if ( len < sizeof(nm_path_t))
+    return -EOVERFLOW;
+
+  /* We copy the first three elements of path_t, but not the hop array. 
+   * Memory needs to be alloc-ed before we can copy the hop array, and 
+   * we don't know what size to make it yet */
+  if (copy_from_user(&path,buf,hops_offset));
+    return -EINVAL;
+
+  if (unlikely(path.src >= nm_model.info.n_endpoints || path.dst >= nm_model.info.n_endpoints)){
+    nm_warn(LD_ERROR, "Path source '%u' or destination '%u' provided was too large. "
+                      "Modelinfo registered only %u endpoints\n",
+                      path.src, path.dst, nm_model.info.n_hops);
+    return -EINVAL;
+  }
+  
+  if (unlikely(path.len == 0)){
+    nm_warn(LD_ERROR, "Path hop length was zero\n");
+    return -EINVAL;
+  }
+
+  #define find(src,dst) nm_model._pathtable[src][dst]
+  find(path.src,path.dst).src = path.src;
+  find(path.src,path.dst).dst = path.dst;
+  find(path.src,path.dst).len = path.len;
+  find(path.src,path.dst).hops = kmalloc(sizeof(uint32_t) * path.len,GFP_KERNEL);
+  copy_from_user(&(find(path.src,path.dst).hops),buf+hops_offset,sizeof(uint32_t)*path.len);
+  #undef path
+  
+  
+  return len;
+}
+
 static int read_hoptable(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
-  int len;
+  int len,i;
   len = 0;
 
   if (nm_model.info.valid) 
   {
-    len += sprintf(page+len,"Hoptable (%u/%u entries loaded):\n",
+    len += sprintf(page+len,"Hoptable - (%u/%u entries loaded)\n",
                             atomic_read(&nm_model.hops_loaded),
                             nm_model.info.n_hops);
+    for (i=0; i < atomic_read(&nm_model.hops_loaded); i++){
+      len += sprintf(page+len, "Hop %u: %u bps %u ms\n",i,nm_model._hoptable[i].bw_limit,nm_model._hoptable[i].delay_ms);
+    } 
   } 
   else {
     len = sprintf(page,"No model loaded\n");
@@ -113,7 +166,7 @@ int initialize_proc_interface(void)
     ret = -1;
   } else 
   {
-    /*CREATE_ENTRY(pathtable,nm_proc_root);*/
+    CREATE_ENTRY(nm_entries,pathtable,nm_proc_root);
     CREATE_ENTRY(nm_entries,hoptable,nm_proc_root);
     CREATE_ENTRY(nm_entries,modelinfo,nm_proc_root);
   }
@@ -129,9 +182,9 @@ int cleanup_proc_interface(void)
   int ret;
   ret= 0;
 
-  /*remove_proc_entry(stringify(pathtable),nm_proc_root);*/
+  remove_proc_entry(stringify(pathtable),nm_proc_root);
   remove_proc_entry(stringify(modelinfo),nm_proc_root);
-  /*remove_proc_entry(stringify(hoptable),nm_proc_root);*/
+  remove_proc_entry(stringify(hoptable),nm_proc_root);
   remove_proc_entry("net-modeler",NULL);
 
   return 0;
