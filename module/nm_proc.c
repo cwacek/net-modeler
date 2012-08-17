@@ -9,9 +9,12 @@ static int read_modelinfo(char *page, char **start, off_t off, int count, int *e
   if (nm_model_details.valid) 
   {
     len = sprintf(page,"Loaded Model: %s [ID: %u]\n"
-                       " %u hops\n"
-                       " %u endpoints\n",
-                       nm_model_details.name, nm_model_details.valid, nm_model_details.n_hops, nm_model_details.n_endpoints);
+                       " - %u hops\n"
+                       " - %u endpoints\n",
+                       nm_model_details.name,
+                       nm_model_details.valid,
+                       nm_model_details.n_hops,
+                       nm_model_details.n_endpoints);
   } 
   else {
     len = sprintf(page,"No model loaded\n");
@@ -28,10 +31,13 @@ static int write_modelinfo(struct file *filp, const char __user *buf, unsigned l
   if (copy_from_user(&nm_model_details,buf,sizeof(nm_model_details_t)))
     return -EINVAL;
 
-  nm_notice(LD_GENERAL,"Loaded model details - Name: %s n_hops: %u n_endpoints: %u\n",
-                nm_model_details.name,nm_model_details.n_hops,nm_model_details.n_endpoints);
+  nm_notice(LD_GENERAL,"Loaded model details - Name: '%s' [ID: %u] n_hops: %u n_endpoints: %u\n",
+                nm_model_details.name,
+                nm_model_details.valid,
+                nm_model_details.n_hops,
+                nm_model_details.n_endpoints);
 
-  return 0;
+  return len;
 }
 
 
@@ -61,8 +67,9 @@ int cleanup_proc_interface(void)
   int ret;
   ret= 0;
 
-  remove_proc_entry(stringify(pathtable),nm_proc_root);
-  remove_proc_entry(stringify(hoptable),nm_proc_root);
+  /*remove_proc_entry(stringify(pathtable),nm_proc_root);*/
+  remove_proc_entry(stringify(modelinfo),nm_proc_root);
+  /*remove_proc_entry(stringify(hoptable),nm_proc_root);*/
   remove_proc_entry("net-modeler",NULL);
 
   return 0;

@@ -16,7 +16,7 @@ enum nm_proc_entries{
 };
 
 #define CREATE_ENTRY(container,name,root) \
-  if (!(container[name] = create_proc_entry(stringify(name), 0644, root))){ \
+  if (!(container[name] = create_proc_entry(#name, 0644, root))){ \
     ret = -1; \
   } else { \
     container[name]->write_proc = write_ ## name; \
