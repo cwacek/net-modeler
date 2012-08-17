@@ -70,16 +70,17 @@ typedef struct nm_path nm_path_t;
 
 typedef struct {
   nm_model_details_t info;
-  nm_hop_t *hoptable;
-  nm_path_t **pathtable;
+  nm_hop_t *_hoptable;
+  nm_path_t **_pathtable;
   atomic_t hops_loaded;
   atomic_t paths_loaded;
+  uint8_t _initialized;
 } nm_model_t;
 
 /** Initialize the datastructures needed to hold our model based on the 
  *  currently loaded nm_model_details.
  **/
-int nm_model_initialize(void);
+int nm_model_initialize(nm_model_details_t *newmodel);
 
 extern nm_model_t nm_model;
 

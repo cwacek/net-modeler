@@ -23,6 +23,7 @@ enum nm_proc_entries{
     container[name]->read_proc = read_ ## name; \
   }
 
+
 int initialize_proc_interface(void);
 int cleanup_proc_interface(void);
 
