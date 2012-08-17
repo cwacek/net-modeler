@@ -5,7 +5,18 @@ static struct proc_dir_entry *nm_entries[__NM_PROC_LEN];
 
 static int read_modelstat(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
-  return -EINVAL;
+  int len;
+  if (nm_model_details.valid) 
+  {
+    len = sprintf(page,"Loaded Model: %s [ID: %u]\n"
+                       " %u hops\n"
+                       " %u endpoints\n",
+                       nm_model_details.name, nm_model_details.valid, nm_model_details.n_hops, nm_model_details.n_endpoints);
+  } 
+  else {
+    len = sprintf(page,"No model loaded\n");
+  }
+  return len;
 }
 
 static int write_modelstat(struct file *filp, const char __user *buf, unsigned long len, void *data)
