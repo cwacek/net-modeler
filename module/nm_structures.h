@@ -54,8 +54,6 @@ struct nm_model_details {
 };
 typedef struct nm_model_details nm_model_details_t;
 
-extern nm_model_details_t nm_model_details;
-
 struct nm_hop {
   uint32_t bw_limit;
   uint32_t delay_ms;
@@ -65,8 +63,24 @@ typedef struct nm_hop nm_hop_t;
 struct nm_path {
   uint32_t src;
   uint32_t dst;
+  uint8_t len;
   nm_hop_t *hops;
 };
 typedef struct nm_path nm_path_t;
+
+typedef struct {
+  nm_model_details_t info;
+  nm_hop_t *hoptable;
+  nm_path_t **pathtable;
+  atomic_t hops_loaded;
+  atomic_t paths_loaded;
+} nm_model_t;
+
+/** Initialize the datastructures needed to hold our model based on the 
+ *  currently loaded nm_model_details.
+ **/
+int nm_model_initialize(void);
+
+extern nm_model_t nm_model;
 
 #endif /*__KERN_NM_STRUCTURES*/

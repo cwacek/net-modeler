@@ -2,11 +2,12 @@
 #include "nm_main.h"
 #include "nm_structures.h"
 
-static uint32_t _lookup_path(uint32_t src,uint32_t dst);
+static inline uint32_t _lookup_path(uint32_t src,uint32_t dst);
 
 /** Global Objects **/
 struct nm_obj_cache nm_objects;
-nm_model_details_t nm_model_details = { 0, "None", 0, 0};
+nm_model_t nm_model = {{ 0, "None", 0, 0},
+                      0, 0, ATOMIC_INIT(0),ATOMIC_INIT(0)};
 
 void nm_structures_init()
 {
@@ -58,5 +59,23 @@ _lookup_path(uint32_t src,uint32_t dst)
   return 0;
 }
 
+
+int nm_model_initialize(void)
+{
+  int i;
+
+  if (!nm_model.info.valid)
+    return -1;
+
+  nm_model.pathtable = kmalloc(sizeof(nm_path_t *)*nm_model.info.n_endpoints,GFP_KERNEL);
+  for (i = 0; i < nm_model.info.n_endpoints; i++)
+  {
+    nm_model.pathtable[i] = kmalloc(sizeof(nm_path_t),GFP_KERNEL);   
+  }
+
+  nm_model.hoptable = kmalloc(sizeof(nm_hop_t)*nm_model.info.n_hops,GFP_KERNEL);
+
+  return 0;
+}
 
 

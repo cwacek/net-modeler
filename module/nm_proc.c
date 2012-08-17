@@ -6,15 +6,15 @@ static struct proc_dir_entry *nm_entries[__NM_PROC_LEN];
 static int read_modelinfo(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
   int len;
-  if (nm_model_details.valid) 
+  if (nm_model.info.valid) 
   {
     len = sprintf(page,"Loaded Model: %s [ID: %u]\n"
                        " - %u hops\n"
                        " - %u endpoints\n",
-                       nm_model_details.name,
-                       nm_model_details.valid,
-                       nm_model_details.n_hops,
-                       nm_model_details.n_endpoints);
+                       nm_model.info.name,
+                       nm_model.info.valid,
+                       nm_model.info.n_hops,
+                       nm_model.info.n_endpoints);
   } 
   else {
     len = sprintf(page,"No model loaded\n");
@@ -25,21 +25,27 @@ static int read_modelinfo(char *page, char **start, off_t off, int count, int *e
 static int write_modelinfo(struct file *filp, const char __user *buf, unsigned long len, void *data)
 {
 
-  if ( len > sizeof(nm_model_details_t))
+  if ( len > sizeof(nm_model.info))
     return -EOVERFLOW;
 
-  if (copy_from_user(&nm_model_details,buf,sizeof(nm_model_details_t)))
+  if (copy_from_user(&nm_model.info,buf,sizeof(nm_model.info)))
     return -EINVAL;
 
   nm_notice(LD_GENERAL,"Loaded model details - Name: '%s' [ID: %u] n_hops: %u n_endpoints: %u\n",
-                nm_model_details.name,
-                nm_model_details.valid,
-                nm_model_details.n_hops,
-                nm_model_details.n_endpoints);
+                nm_model.info.name,
+                nm_model.info.valid,
+                nm_model.info.n_hops,
+                nm_model.info.n_endpoints);
+
+  nm_notice(LD_GENERAL,"Initializing data structures\n");
+
+  if (nm_model_initialize() < 0)
+    return -EINVAL;
 
   return len;
 }
 
+/*static int write_hoptable(struct file *filp, const char __user *buf, unsigned long len, void *data);*/
 
 int initialize_proc_interface(void)
 {
