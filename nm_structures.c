@@ -4,7 +4,10 @@
 
 static uint32_t _lookup_path(uint32_t src,uint32_t dst);
 
+/** Global Objects **/
 struct nm_obj_cache nm_objects;
+nm_model_details_t nm_model_details = { 1, "None", 0, 0};
+
 void nm_structures_init()
 {
   nm_objects.NM_PKT_ALLOC = kmem_cache_create("nm_packets",

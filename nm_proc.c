@@ -3,6 +3,26 @@
 static struct proc_dir_entry *nm_proc_root;
 static struct proc_dir_entry *nm_entries[__NM_PROC_LEN];
 
+static int read_modelstat(char *page, char **start, off_t off, int count, int *eof, void *data)
+{
+  return -EINVAL;
+}
+
+static int write_modelstat(struct file *filp, const char __user *buf, unsigned long len, void *data)
+{
+
+  if ( len > sizeof(nm_model_details_t))
+    return -EOVERFLOW;
+
+  if (copy_from_user(&nm_model_details,buf,sizeof(nm_model_details_t)))
+    return -EINVAL;
+
+  nm_notice(LD_GENERAL,"Loaded model details - Name: %s n_hops: %u n_endpoints: %u\n",
+                nm_model_details.name,nm_model_details.n_hops,nm_model_details.n_endpoints);
+
+  return 0;
+}
+
 
 int initialize_proc_interface(void)
 {
@@ -10,15 +30,29 @@ int initialize_proc_interface(void)
   ret = 0;
   nm_proc_root = proc_mkdir_mode("net-modeler",0644,NULL);
 
-  if (!nm_proc_root)
+  if (!nm_proc_root){
     ret = -1;
-  else if (!(nm_entries[nm_proc_pathtable] = create_proc_entry(stringify(nm_proc_pathtable), 0644, nm_proc_root)))
-    ret = -1;
-  else if (!(nm_entries[nm_proc_hoptable] = create_proc_entry(stringify(nm_proc_hoptable), 0644, nm_proc_root)))
-    ret = -1;
+  } else 
+  {
+    /*CREATE_ENTRY(pathtable,nm_proc_root);*/
+    /*CREATE_ENTRY(hoptable,nm_proc_root);*/
+    CREATE_ENTRY(nm_entries,modelstat,nm_proc_root);
+  }
 
   if (ret < 0)
     nm_warn(LD_ERROR,"/proc entry creation failed.");
 
   return ret;
+}
+
+int cleanup_proc_interface(void)
+{
+  int ret;
+  ret= 0;
+
+  remove_proc_entry(stringify(pathtable),nm_proc_root);
+  remove_proc_entry(stringify(hoptable),nm_proc_root);
+  remove_proc_entry("net-modeler",NULL);
+
+  return 0;
 }

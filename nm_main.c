@@ -9,6 +9,7 @@
 #include "nm_main.h"
 #include "nm_magic.h"
 #include "nm_structures.h"
+#include "nm_proc.h"
 
 static struct nf_hook_ops nfho;
 struct iphdr *iph;
@@ -144,6 +145,8 @@ static int __init nm_init(void)
 
   nf_register_hook(&nfho);
 
+  check_call(initialize_proc_interface());
+
   /* Initialize the global scheduler */
   if (nm_init_sched(update) < 0){
      nm_warn(LD_ERROR,"Failed to initialize scheduler\n");
@@ -166,6 +169,7 @@ static void nm_exit(void)
   nf_unregister_queue_handler(PF_INET,&_queueh);
   nm_cleanup_sched();
   nm_structures_release();
+  cleanup_proc_interface();
   nm_notice(LD_GENERAL,"Unloading\n");
 }
 

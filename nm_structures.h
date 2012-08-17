@@ -46,5 +46,27 @@ nm_packet_init(struct nf_queue_entry *data,  uint32_t src, uint32_t dst);
 /** Free a packet **/
 void nm_packet_free(nm_packet_t *pkt);
 
+struct nm_model_details {
+  uint8_t valid;
+  char name[32];
+  uint32_t n_hops;
+  uint32_t n_endpoints;
+};
+typedef struct nm_model_details nm_model_details_t;
+
+extern nm_model_details_t nm_model_details;
+
+struct nm_hop {
+  uint32_t bw_limit;
+  uint32_t delay_ms;
+};
+typedef struct nm_hop nm_hop_t;
+
+struct nm_path {
+  uint32_t src;
+  uint32_t dst;
+  nm_hop_t *hops;
+};
+typedef struct nm_path nm_path_t;
 
 #endif /*__KERN_NM_STRUCTURES*/

@@ -4,15 +4,26 @@
 #include "nm_main.h"
 #include <linux/proc_fs.h>
 
-#define nm_proc_pathtable NM_PROC_PATHTABLE
-#define nm_proc_hoptable NM_PROC_HOPTABLE
+#define pathtable NM_PROC_PATHTABLE
+#define hoptable NM_PROC_HOPTABLE
+#define modelstats NM_PROC_MODELSTATS
 
 enum nm_proc_entries{
-  nm_proc_pathtable,
-  nm_proc_hoptable,
+  pathtable,
+  hoptable,
+  modelstat,
   __NM_PROC_LEN,
 };
 
+#define CREATE_ENTRY(container,name,root) \
+  if (!(container[name] = create_proc_entry(stringify(name), 0644, root))){ \
+    ret = -1; \
+  } else { \
+    container[name]->write_proc = write_ ## name; \
+    container[name]->read_proc = read_ ## name; \
+  }
+
 int initialize_proc_interface(void);
+int cleanup_proc_interface(void);
 
 #endif
