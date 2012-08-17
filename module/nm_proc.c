@@ -3,6 +3,8 @@
 static struct proc_dir_entry *nm_proc_root;
 static struct proc_dir_entry *nm_entries[__NM_PROC_LEN];
 
+#define NUM_PAIRWISE(x) ( (x * x) - x)
+
 static int read_modelinfo(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
   int len;
@@ -15,7 +17,8 @@ static int read_modelinfo(char *page, char **start, off_t off, int count, int *e
                        nm_model.info.valid,
                        nm_model.info.n_hops, atomic_read(&nm_model.hops_loaded),
                        nm_model.info.n_endpoints,
-                       atomic_read(&nm_model.paths_loaded),nm_model.info.n_endpoints * nm_model.info.n_endpoints);
+                       atomic_read(&nm_model.paths_loaded),
+                       NUM_PAIRWISE(nm_model.info.n_endpoints));
   } 
   else {
     len = sprintf(page,"No model loaded\n");
