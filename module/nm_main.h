@@ -25,6 +25,12 @@
 #define IPH_FMT_DATA(iph) (iph)->id, &(iph)->saddr, &(iph)->daddr, (iph)->protocol, (iph)->ttl
 
 #define check_call(x) if ((x) < 0) nm_warn(LD_TRACE,"Call "#x" failed\n")
+#define NM_IP_MASK 0x000000FF
+#define NM_IP_NET 0x0000000A
+#define NM_IP_BASE 0x0A000000
+
+/* Translate an IP address into an array index */
+#define ip_int_idx(ip) ip - NM_IP_BASE
 
 
 /** Injector **/

@@ -14,8 +14,6 @@
 static struct nf_hook_ops nfho;
 struct iphdr *iph;
 
-#define NM_IP_MASK 0x000000FF
-#define NM_IP_NET 0x0000000A
 #define IS_NM_IP(ip) (((ip) & NM_IP_MASK) == (NM_IP_NET))
 #define NM_SEEN(iph) (iph->tos == TOS_MAGIC)
 
