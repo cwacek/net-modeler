@@ -38,6 +38,10 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
   }
 
   nm_debug(LD_TIMING,"Received packet at %lldns\n",ktime_to_ns(nm_get_time()));
+  if (!nm_model._initialized){
+    nm_notice(LD_GENERAL,"Rejecting filtered packet because no model is initialized\n");
+    return NF_REJECT;
+  }
 
   return NF_QUEUE;
 }
@@ -53,6 +57,7 @@ ktime_t update(struct nm_global_sched *sch)
   struct nm_packet *pkt;
   int missed_intervals, i, dequeued_ctr = 0;
   unsigned long lock_flags;
+  nm_hop_t *hop;
   ktime_t now = sch->timer.base->get_time();
   log_func_entry;
   lock_flags = 0;
@@ -70,12 +75,18 @@ ktime_t update(struct nm_global_sched *sch)
       nm_schedule_lock_acquire(lock_flags);
       pkt = slot_pull(&scheduler_slot(sch,i));
       nm_schedule_lock_release(lock_flags);
+
       if (!pkt)
         break;
+
+      /* Figure out the tailexit for the hop */
+      hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
+      hop->tailexit--;
+      
       if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) {
         /** If this was a hop in progress, we want to enqueue rather than
          * reinject **/
-        /*nm_enqueue(pkt,path_dist(path_id,path_idx) - pkt->hop_progress);*/
+        nm_enqueue(pkt,calc_delay(pkt) - pkt->hop_progress);
       } else {
         dequeued_ctr++;
         nm_debug(LD_GENERAL,"dequeued packet: "IPH_FMT"\n",
@@ -111,10 +122,11 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
                        queue_entry_iph(entry)->saddr, 
                        queue_entry_iph(entry)->daddr);
   
+  
   if (unlikely(!pkt))
     return -ENOMEM;
   
-  if (unlikely((err = nm_enqueue(pkt,10 - (scheduler_index() - index))) < 0))
+  if (unlikely((err = nm_enqueue(pkt,calc_delay(pkt) - (scheduler_index() - index))) < 0))
     return err;
 
   nm_debug(LD_TIMING,"Completed packet enqueue at %lldns\n",ktime_to_ns(nm_get_time()));

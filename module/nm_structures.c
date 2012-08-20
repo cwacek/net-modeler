@@ -3,7 +3,7 @@
 #include "nm_magic.h"
 #include "nm_structures.h"
 
-static inline uint32_t _lookup_path(uint32_t src,uint32_t dst);
+static inline nm_path_t * _lookup_path(uint32_t src,uint32_t dst);
 static inline void nm_model_free(void);
 
 /** Global Objects **/
@@ -42,8 +42,8 @@ nm_packet_init(struct nf_queue_entry *data,uint32_t src,uint32_t dst)
   nm_packet_t *pkt = nm_alloc(NM_PKT_ALLOC,GFP_ATOMIC);
   pkt->data = data;
   pkt->path_idx = 0;
-  pkt->path_id = _lookup_path(src,dst);
-  pkt->hop_progress = pkt->flags = 0;
+  pkt->path = _lookup_path(src,dst);
+  pkt->hop_progress = pkt->hop_exit = pkt->flags = 0;
   pkt->next = 0;
 
   return pkt;
@@ -55,10 +55,12 @@ void nm_packet_free(nm_packet_t *pkt)
   return;
 }
 
-static inline uint32_t 
+static inline nm_path_t * 
 _lookup_path(uint32_t src,uint32_t dst)
 {
-  /*nm_warn(LD_ERROR,"_lookup_path not implemented\n");*/
+  #define find(src,dst) nm_model._pathtable[ip_int_idx(src)][ip_int_idx(dst)]
+  return &find(src,dst);
+  #undef find
   return 0;
 }
 

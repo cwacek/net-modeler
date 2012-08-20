@@ -126,6 +126,32 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
   return pulled;
 }
 
+/** Calculate how much to delay a packet as it
+ *  transits a hop **/
+inline uint32_t calc_delay(nm_packet_t *pkt)
+{
+  nm_hop_t *hop;
+  uint32_t delay;
+  delay = 0;
+  /* The delay should be the latency + how long it
+   * will take the packet to cross the link based on 
+   * bw */
+
+  hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
+
+  if (hop->bw_limit != 0)
+  {
+    /* We need to do bandwidth */
+    /* packet size is given by pkt->data->skb->len */
+    delay += pkt->data->skb->len / hop->bw_limit;
+  }
+  delay += hop->delay_ms;
+  delay += hop->tailexit;
+  hop->tailexit = delay;
+
+  return delay;
+}
+
 /** Enqueue a packet into the calendar at an offset from now **/
 int nm_enqueue(nm_packet_t *data,uint16_t offset)
 {

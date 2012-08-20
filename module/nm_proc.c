@@ -112,13 +112,17 @@ static int write_pathtable(struct file *filp, const char __user *buf, unsigned l
   find(path.src,path.dst).src = path.src;
   find(path.src,path.dst).dst = path.dst;
   find(path.src,path.dst).len = path.len;
-  find(path.src,path.dst).hops = kmalloc(sizeof(uint32_t) * path.len,GFP_KERNEL);
-  copy_from_user(&(find(path.src,path.dst).hops),buf+hops_offset,sizeof(uint32_t)*path.len);
+
   /** Mark it as loaded if we haven't loaded it before. **/
   if (find(path.src,path.dst).valid != TOS_MAGIC){
     find(path.src,path.dst).valid = TOS_MAGIC;
     atomic_inc(&nm_model.paths_loaded);
+  } else {
+    kfree(find(path.src,path.dst).hops);
   }
+
+  find(path.src,path.dst).hops = kmalloc(sizeof(uint32_t) * path.len,GFP_KERNEL);
+  copy_from_user((find(path.src,path.dst).hops),buf+hops_offset,sizeof(uint32_t)*path.len);
   #undef find
   
   return len;

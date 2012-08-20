@@ -1,18 +1,29 @@
 #ifndef __KERN_NM_STRUCTURES
 #define __KERN_NM_STRUCTURES
 
+struct nm_path {
+  uint32_t src;
+  uint32_t dst;
+  uint8_t valid;
+  uint8_t len;
+  uint32_t *hops;
+};
+typedef struct nm_path nm_path_t;
+
 /** The packet flagged this way is in the middle of an incomplete hop **/
 #define NM_FLAG_HOP_INCOMPLETE 1
 
 struct nm_packet {
   struct nf_queue_entry *data;
-  /** The ID of the path we're looking for */
-  uint32_t path_id;
+  /** The the path this packet is going to transit.*/
+  nm_path_t *path;
   /** The hop index on the current path */
   uint32_t path_idx;               
   /* Keep track of how far we've scheduled for hops
    * longer than the max scheduler */
   uint16_t hop_progress; 
+  /* The how far into the future the hop should exit */
+  uint16_t hop_exit;
   uint16_t flags;
   /** Linked list helpers **/
   struct nm_packet *next;
@@ -55,19 +66,14 @@ struct nm_model_details {
 typedef struct nm_model_details nm_model_details_t;
 
 struct nm_hop {
+  /* The speed of the hop in bytes/ms */
   uint32_t bw_limit;
   uint32_t delay_ms;
+  /** The time the last packet queued is scheduled to exit 
+   * this hop */
+  uint16_t tailexit;
 };
 typedef struct nm_hop nm_hop_t;
-
-struct nm_path {
-  uint32_t src;
-  uint32_t dst;
-  uint8_t valid;
-  uint8_t len;
-  uint32_t *hops;
-};
-typedef struct nm_path nm_path_t;
 
 typedef struct {
   nm_model_details_t info;
