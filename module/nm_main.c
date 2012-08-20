@@ -40,7 +40,7 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
   nm_debug(LD_TIMING,"Received packet at %lldns\n",ktime_to_ns(nm_get_time()));
   if (!nm_model._initialized){
     nm_notice(LD_GENERAL,"Rejecting filtered packet because no model is initialized\n");
-    return NF_REJECT;
+    return NF_DROP;
   }
 
   return NF_QUEUE;
