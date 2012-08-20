@@ -1,8 +1,10 @@
 #include "nm_log.h"
 #include "nm_main.h"
+#include "nm_magic.h"
 #include "nm_structures.h"
 
 static inline uint32_t _lookup_path(uint32_t src,uint32_t dst);
+static inline void nm_model_free(void);
 
 /** Global Objects **/
 struct nm_obj_cache nm_objects;
@@ -31,6 +33,7 @@ void nm_structures_release()
   kmem_cache_destroy(nm_objects.SOCKADDR_ALLOC);
   kmem_cache_destroy(nm_objects.MSGHDR_ALLOC);
   kmem_cache_destroy(nm_objects.KVEC_ALLOC);
+  nm_model_free();
 }
 
 nm_packet_t *
@@ -59,6 +62,25 @@ _lookup_path(uint32_t src,uint32_t dst)
   return 0;
 }
 
+static inline void nm_model_free(void)
+{
+  int i,j;
+
+  if (nm_model._initialized){
+    for (i = 0; i < nm_model.info.n_endpoints; i++)
+    {
+      for (j = 0; j < nm_model.info.n_endpoints; j++)
+      { 
+        if (nm_model._pathtable[i][j].valid == TOS_MAGIC)
+          kfree(nm_model._pathtable[i][j].hops);
+      }
+      kfree(nm_model._pathtable[i]);
+    }
+    kfree(nm_model._pathtable);
+    kfree(nm_model._hoptable);
+  }
+}
+
 int nm_model_initialize(nm_model_details_t *modinfo)
 {
   int i;
@@ -66,15 +88,7 @@ int nm_model_initialize(nm_model_details_t *modinfo)
   if (!modinfo->valid)
     return -1;
 
-  if (nm_model._initialized){
-    nm_info(LD_GENERAL, "Freeing old model to make room for new one\n");
-    for (i = 0; i < nm_model.info.n_endpoints; i++)
-    {
-      kfree(nm_model._pathtable[i]);
-    }
-    kfree(nm_model._pathtable);
-    kfree(nm_model._hoptable);
-  }
+  nm_model_free();
 
   /** Now we switch to the new model and reload **/
   nm_info(LD_GENERAL,"Allocating space for new model\n");
@@ -84,7 +98,7 @@ int nm_model_initialize(nm_model_details_t *modinfo)
   nm_model._initialized = 1;
   for (i = 0; i < nm_model.info.n_endpoints; i++)
   {
-    nm_model._pathtable[i] = kmalloc(sizeof(nm_path_t),GFP_KERNEL);   
+    nm_model._pathtable[i] = kmalloc(sizeof(nm_path_t)*nm_model.info.n_endpoints,GFP_KERNEL);   
   }
 
   nm_model._hoptable = kmalloc(sizeof(nm_hop_t)*nm_model.info.n_hops,GFP_KERNEL);
