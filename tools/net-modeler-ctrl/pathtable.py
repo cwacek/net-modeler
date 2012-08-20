@@ -65,6 +65,6 @@ def set_path(args):
     else:
       print "Failed. Check 'dmesg' for more details. Errno: {0}".format(e.errno)
   else:
-    sys.stderr.write("Added {0} -> {1}: {2}".format(args.src_ip,args.dst_ip,hops))
+    sys.stderr.write("Added {0} -> {1}: {2}\n".format(args.src_ip,args.dst_ip,hops))
 
 
