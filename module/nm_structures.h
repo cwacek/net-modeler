@@ -63,6 +63,7 @@ typedef struct nm_hop nm_hop_t;
 struct nm_path {
   uint32_t src;
   uint32_t dst;
+  uint8_t valid;
   uint8_t len;
   uint32_t *hops;
 };

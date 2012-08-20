@@ -172,10 +172,19 @@ static int write_hoptable(struct file *filp, const char __user *buf, unsigned lo
     return -EINVAL;
   }
 
+  if (hop.id > atomic_read(&nm_model.hops_loaded)+1)
+  {
+    nm_warn(LD_ERROR, "Hops must be loaded sequentially. Last hop loaded was %u. Requested load of %u.\n",
+            atomic_read(&nm_model.hops_loaded),hop.id);
+    return -EINVAL;
+  }
+
   nm_model._hoptable[hop.id].bw_limit = hop.bw_limit;
   nm_model._hoptable[hop.id].delay_ms = hop.delay_ms;
 
   atomic_inc(&nm_model.hops_loaded);
+  
+  nm_info(LD_GENERAL, "Loaded hop %u\n",hop.id);
 
   return len;
 }

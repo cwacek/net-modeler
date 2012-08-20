@@ -2,6 +2,7 @@
 #define __KERN_NM_PROC
 
 #include "nm_main.h"
+#include "nm_magic.h"
 #include <linux/proc_fs.h>
 
 #define pathtable NM_PROC_PATHTABLE
