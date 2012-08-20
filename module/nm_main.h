@@ -27,7 +27,9 @@
 #define check_call(x) if ((x) < 0) nm_warn(LD_TRACE,"Call "#x" failed\n")
 #define NM_IP_MASK 0x000000FF
 #define NM_IP_NET 0x0000000A
-#define NM_IP_BASE 0x0A000000
+
+/* Base is the same as the net, plus one, so that we index 10.0.0.1 into 0 */
+#define NM_IP_BASE 0x0A000001
 
 /* Translate an IP address into an array index */
 #define ip_int_idx(ip) ip - NM_IP_BASE
