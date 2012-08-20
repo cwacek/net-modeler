@@ -52,7 +52,19 @@ static int write_modelinfo(struct file *filp, const char __user *buf, unsigned l
 
 static int read_pathtable(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
-  return -EINVAL;
+  int len;
+  len = 0;
+
+  if (nm_model.info.valid) 
+  {
+    len += sprintf(page+len,"Pathtable - (%u/%u entries loaded)\n",
+                            atomic_read(&nm_model.paths_loaded),
+                            NUM_PAIRWISE(nm_model.info.n_endpoints));
+  } 
+  else {
+    len = sprintf(page,"No model loaded\n");
+  }
+  return len;
 }
 
 static int write_pathtable(struct file *filp, const char __user *buf, unsigned long len, void *data)
@@ -67,19 +79,25 @@ static int write_pathtable(struct file *filp, const char __user *buf, unsigned l
     return -EINVAL;
   }
 
-  if ( len < sizeof(nm_path_t))
+  /** Check if we have enough data. Don't count the pointer
+   *  size though.
+   **/
+  if ( len < (sizeof(nm_path_t) - sizeof(uint32_t*)))
     return -EOVERFLOW;
 
   /* We copy the first three elements of path_t, but not the hop array. 
    * Memory needs to be alloc-ed before we can copy the hop array, and 
    * we don't know what size to make it yet */
-  if (copy_from_user(&path,buf,hops_offset));
-    return -EINVAL;
+  if (copy_from_user(&path,buf,hops_offset)){
+    nm_warn(LD_ERROR,"Failed to copy data from user space\n");
+    return -EINVAL;                           
+  }
 
-  if (unlikely(path.src >= nm_model.info.n_endpoints || path.dst >= nm_model.info.n_endpoints)){
+  if (unlikely(ip_int_idx(path.src) >= nm_model.info.n_endpoints 
+              || ip_int_idx(path.dst) >= nm_model.info.n_endpoints)){
     nm_warn(LD_ERROR, "Path source '%u' or destination '%u' provided was too large. "
                       "Modelinfo registered only %u endpoints\n",
-                      path.src, path.dst, nm_model.info.n_hops);
+                      ip_int_idx(path.src), ip_int_idx(path.dst), nm_model.info.n_hops);
     return -EINVAL;
   }
   
@@ -88,14 +106,20 @@ static int write_pathtable(struct file *filp, const char __user *buf, unsigned l
     return -EINVAL;
   }
 
-  #define find(src,dst) nm_model._pathtable[src][dst]
+  nm_info(LD_GENERAL,"Registering path from %u to %u.\n",ip_int_idx(path.src),ip_int_idx(path.dst));
+
+  #define find(src,dst) nm_model._pathtable[ip_int_idx(src)][ip_int_idx(dst)]
   find(path.src,path.dst).src = path.src;
   find(path.src,path.dst).dst = path.dst;
   find(path.src,path.dst).len = path.len;
   find(path.src,path.dst).hops = kmalloc(sizeof(uint32_t) * path.len,GFP_KERNEL);
   copy_from_user(&(find(path.src,path.dst).hops),buf+hops_offset,sizeof(uint32_t)*path.len);
-  #undef path
-  
+  /** Mark it as loaded if we haven't loaded it before. **/
+  if (find(path.src,path.dst).valid != TOS_MAGIC){
+    find(path.src,path.dst).valid = TOS_MAGIC;
+    atomic_inc(&nm_model.paths_loaded);
+  }
+  #undef find
   
   return len;
 }
