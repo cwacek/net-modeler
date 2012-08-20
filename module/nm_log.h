@@ -25,7 +25,7 @@
    ((ld == LD_TRACE ) ? "TRACE" :  \
    (ld == LD_TIMING) ? "TIMING" : \
    (ld == LD_GENERAL) ? "GENERAL" : \
-   (ld == LD_ERROR) ? "ERROR ": "UNDEF" )
+   (ld == LD_ERROR) ? "ERROR": "UNDEF" )
 
 #define NM_LOG_PREFIX "net-modeler:"
 
