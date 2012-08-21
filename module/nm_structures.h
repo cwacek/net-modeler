@@ -22,8 +22,8 @@ struct nm_packet {
   /* Keep track of how far we've scheduled for hops
    * longer than the max scheduler */
   uint16_t hop_progress; 
-  /* The how far into the future the hop should exit */
-  uint16_t hop_exit;
+  /* The total cost of transiting the current hop. */
+  uint16_t hop_cost;
   uint16_t flags;
   /** Linked list helpers **/
   struct nm_packet *next;

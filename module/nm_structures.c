@@ -43,7 +43,7 @@ nm_packet_init(struct nf_queue_entry *data,uint32_t src,uint32_t dst)
   pkt->data = data;
   pkt->path_idx = 0;
   pkt->path = _lookup_path(src,dst);
-  pkt->hop_progress = pkt->hop_exit = pkt->flags = 0;
+  pkt->hop_progress = pkt->hop_cost = pkt->flags = 0;
   pkt->next = 0;
 
   return pkt;

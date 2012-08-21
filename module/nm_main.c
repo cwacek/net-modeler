@@ -76,7 +76,7 @@ ktime_t update(struct nm_global_sched *sch)
       pkt = slot_pull(&scheduler_slot(sch,i));
       nm_schedule_lock_release(lock_flags);
 
-      if (!pkt)
+      if (likely(!pkt))
         break;
 
       /* Figure out the tailexit for the hop */
@@ -89,18 +89,17 @@ ktime_t update(struct nm_global_sched *sch)
       if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) 
       {
         /* Adjust hop exit by the amount we've traveled. */
-        pkt->hop_exit -= pkt->hop_progress;
         hop->tailexit -= pkt->hop_progress;
-        nm_debug(LD_SCHEDULE, "Set tailexit for hop %u to %u",
-                  pkt->path->hops[pkt->path_idx],hop->tailexit);
+        nm_debug(LD_SCHEDULE, "Set tailexit for partially completed hop %u to %u. %u slots remain [index: %llu]",
+                  pkt->path->hops[pkt->path_idx],hop->tailexit,pkt->hop_cost,scheduler_index());
 
-        nm_enqueue(pkt,calc_delay(pkt) - pkt->hop_progress);
+        nm_enqueue(pkt, pkt->hop_cost - pkt->hop_progress);
       } 
       else 
       {
-        hop->tailexit -= pkt->hop_exit;
-        nm_debug(LD_SCHEDULE, "Set tailexit for hop %u to %u",
-                  pkt->path->hops[pkt->path_idx],hop->tailexit);
+        hop->tailexit -= pkt->hop_cost - pkt->hop_progress;
+        nm_debug(LD_SCHEDULE, "Set tailexit for hop %u to %u [index: %llu]",
+                  pkt->path->hops[pkt->path_idx],hop->tailexit,scheduler_index());
 
         /* If we have reached the last hop, then we should reinject.
          * Otherwise we should enqueue for the next hop */
@@ -153,7 +152,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   if (unlikely((err = nm_enqueue(pkt,calc_delay(pkt) - (scheduler_index() - index))) < 0))
     return err;
 
-  nm_debug(LD_TIMING,"Completed packet enqueue at %lldns\n",ktime_to_ns(nm_get_time()));
+  nm_debug(LD_TIMING,"Completed packet enqueue at %lldns [index: %llu]\n",ktime_to_ns(nm_get_time()),index);
 
   return 0;
 }
