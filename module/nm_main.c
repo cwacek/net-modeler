@@ -83,19 +83,41 @@ ktime_t update(struct nm_global_sched *sch)
       if (!pkt->path)
         break;
       hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
-      hop->tailexit--;
       
-      if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) {
-        /** If this was a hop in progress, we want to enqueue rather than
-         * reinject **/
-        nm_enqueue(pkt,calc_delay(pkt) - pkt->hop_progress);
-      } else {
-        dequeued_ctr++;
-        nm_debug(LD_GENERAL,"dequeued packet: "IPH_FMT"\n",
-                    IPH_FMT_DATA(queue_entry_iph(pkt->data)));
+      /** If this was a hop in progress, we want to enqueue rather than
+       * reinject **/
+      if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) 
+      {
+        /* Adjust hop exit by the amount we've traveled. */
+        pkt->hop_exit -= pkt->hop_progress;
+        hop->tailexit -= pkt->hop_progress;
+        nm_debug(LD_SCHEDULE, "Set tailexit for hop %u to %u",
+                  pkt->path->hops[pkt->path_idx],hop->tailexit);
 
-        nf_reinject(pkt->data,NF_ACCEPT);
-        nm_packet_free(pkt);
+        nm_enqueue(pkt,calc_delay(pkt) - pkt->hop_progress);
+      } 
+      else 
+      {
+        hop->tailexit -= pkt->hop_exit;
+        nm_debug(LD_SCHEDULE, "Set tailexit for hop %u to %u",
+                  pkt->path->hops[pkt->path_idx],hop->tailexit);
+
+        /* If we have reached the last hop, then we should reinject.
+         * Otherwise we should enqueue for the next hop */
+        if (++(pkt->path_idx) < pkt->path->len){
+          if (unlikely((nm_enqueue(pkt,calc_delay(pkt))) < 0)){
+            nm_warn(LD_ERROR,"CRITICAL ERROR: Failed to reenqueue packet "
+                             "for hop %u\n",pkt->path_idx);
+          }
+          nm_debug(LD_SCHEDULE,"Scheduling packet on next hop %u\n",
+                                pkt->path_idx);
+        } else {
+          dequeued_ctr++;
+          nm_debug(LD_GENERAL,"dequeued packet: "IPH_FMT"\n",
+                      IPH_FMT_DATA(queue_entry_iph(pkt->data)));
+          nf_reinject(pkt->data,NF_ACCEPT);
+          nm_packet_free(pkt);
+        }
       }
     }
   }

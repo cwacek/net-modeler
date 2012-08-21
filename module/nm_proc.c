@@ -52,7 +52,7 @@ static int write_modelinfo(struct file *filp, const char __user *buf, unsigned l
 
 static int read_pathtable(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
-  int len;
+  int len,i,j,k;
   len = 0;
 
   if (nm_model.info.valid) 
@@ -60,6 +60,22 @@ static int read_pathtable(char *page, char **start, off_t off, int count, int *e
     len += sprintf(page+len,"Pathtable - (%u/%u entries loaded)\n",
                             atomic_read(&nm_model.paths_loaded),
                             NUM_PAIRWISE(nm_model.info.n_endpoints));
+    for (i = 0; i < nm_model.info.n_endpoints; i++)
+    {
+      for (j = 0; j < nm_model.info.n_endpoints; j++)
+      {
+        if (unlikely(i == j))
+          continue;
+        if (nm_model._pathtable[i][j].valid != TOS_MAGIC)
+          continue;
+
+        len += sprintf(page +len, "Path %u -> %u: [",i,j);
+        for (k = 0; k < nm_model._pathtable[i][j].len; k++)
+          len += sprintf(page +len, "%u ",nm_model._pathtable[i][j].hops[k]);
+        len += sprintf(page + len, "]\n");
+
+      }
+    }
   } 
   else {
     len = sprintf(page,"No model loaded\n");
@@ -187,10 +203,15 @@ static int write_hoptable(struct file *filp, const char __user *buf, unsigned lo
 
   nm_model._hoptable[hop.id].bw_limit = hop.bw_limit;
   nm_model._hoptable[hop.id].delay_ms = hop.delay_ms;
+  nm_model._hoptable[hop.id].tailexit = 0;
 
-  atomic_inc(&nm_model.hops_loaded);
-  
-  nm_info(LD_GENERAL, "Loaded hop %u\n",hop.id);
+  if (hop.id >= atomic_read(&nm_model.hops_loaded)){
+    atomic_inc(&nm_model.hops_loaded);
+    nm_info(LD_GENERAL, "Loaded hop %u\n",hop.id);
+  } else 
+  {
+    nm_info(LD_GENERAL, "Reloaded existing hop %u\n",hop.id);
+  }
 
   return len;
 }

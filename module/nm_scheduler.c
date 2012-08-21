@@ -139,7 +139,7 @@ inline int32_t calc_delay(nm_packet_t *pkt)
    * will take the packet to cross the link based on 
    * bw */
 
-  if (unlikely( !pkt || !pkt->path)){
+  if (unlikely( !pkt || !pkt->path || pkt->path->valid != TOS_MAGIC)){
     nm_warn(LD_ERROR,"Can't route packet, "
                       "it has no designated path\n");
     return -1;
@@ -155,6 +155,13 @@ inline int32_t calc_delay(nm_packet_t *pkt)
   }
   delay += hop->delay_ms;
   delay += hop->tailexit;
+  pkt->hop_exit = delay;
+
+  nm_debug(LD_SCHEDULE, "Calculated delay for packet (size: %u) on hop %u as %u ms. "
+                        "[bw: %u, latency: %u, curr_tailexit: %u]\n",
+                          pkt->data->skb->len, pkt->path->hops[pkt->path_idx],
+                          delay, hop->bw_limit, hop->delay_ms, hop->tailexit );
+
   hop->tailexit = delay;
 
   return delay;
