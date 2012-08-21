@@ -80,6 +80,8 @@ ktime_t update(struct nm_global_sched *sch)
         break;
 
       /* Figure out the tailexit for the hop */
+      if (!pkt->path)
+        break;
       hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
       hop->tailexit--;
       

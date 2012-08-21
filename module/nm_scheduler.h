@@ -48,7 +48,7 @@ struct nm_global_sched {
 
 nm_packet_t * slot_pull(struct calendar_slot *slot);
 
-inline uint32_t calc_delay(nm_packet_t *pkt);
+inline int32_t calc_delay(nm_packet_t *pkt);
 
 
 #endif

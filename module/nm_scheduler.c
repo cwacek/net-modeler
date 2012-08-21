@@ -127,8 +127,10 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
 }
 
 /** Calculate how much to delay a packet as it
- *  transits a hop **/
-inline uint32_t calc_delay(nm_packet_t *pkt)
+ *  transits a hop.
+ *
+ *  Return -1 if we can't figure it out for some reason.**/
+inline int32_t calc_delay(nm_packet_t *pkt)
 {
   nm_hop_t *hop;
   uint32_t delay;
@@ -136,6 +138,12 @@ inline uint32_t calc_delay(nm_packet_t *pkt)
   /* The delay should be the latency + how long it
    * will take the packet to cross the link based on 
    * bw */
+
+  if (unlikely( !pkt || !pkt->path)){
+    nm_warn(LD_ERROR,"Can't route packet, "
+                      "it has no designated path\n");
+    return -1;
+  }
 
   hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
 
@@ -153,8 +161,11 @@ inline uint32_t calc_delay(nm_packet_t *pkt)
 }
 
 /** Enqueue a packet into the calendar at an offset from now **/
-int nm_enqueue(nm_packet_t *data,uint16_t offset)
+int nm_enqueue(nm_packet_t *data,int16_t offset)
 {
+  if (unlikely(offset < 0))
+    return -1;
+
   if (unlikely(!one_hop_schedulable(offset))){
     offset = CALENDAR_BUF_LEN;
     data->hop_progress += CALENDAR_BUF_LEN;

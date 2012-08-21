@@ -47,7 +47,7 @@ typedef ktime_t (*nm_cb_func)(struct nm_global_sched *);
 
 int nm_init_sched(nm_cb_func);
 void nm_cleanup_sched(void);
-int nm_enqueue(nm_packet_t *data, uint16_t offset);
+int nm_enqueue(nm_packet_t *data, int16_t offset);
 void nm_schedule(ktime_t time);
 
 
