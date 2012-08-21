@@ -59,12 +59,15 @@ void nm_packet_free(nm_packet_t *pkt)
 static inline nm_path_t * 
 _lookup_path(uint32_t src,uint32_t dst)
 {
-  nm_debug(LD_GENERAL,"Looking up path from %u to %u\n",
-              ip_int_idx(src),ip_int_idx(dst));
+  uint32_t nl_src,nl_dst;
+  nl_src = htonl(src);
+  nl_dst = htonl(dst);
+  nm_debug(LD_GENERAL,"Looking up path from %u to %u @[%u][%u]\n",
+              nl_src,nl_dst,
+              ip_int_idx(nl_src),ip_int_idx(nl_dst));
   #define find(src,dst) nm_model._pathtable[ip_int_idx(src)][ip_int_idx(dst)]
-  return &find(src,dst);
+  return &find(nl_src,nl_dst);
   #undef find
-  return 0;
 }
 
 static inline void nm_model_free(void)
