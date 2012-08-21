@@ -20,18 +20,20 @@
 #define LD_TIMING 0x1 << 1
 #define LD_GENERAL 0x1 << 2
 #define LD_ERROR 0x1 << 3
+#define LD_SCHEDULE 0x1 << 4
 
 #define nm_ld_string(ld) \
    ((ld == LD_TRACE ) ? "TRACE" :  \
    (ld == LD_TIMING) ? "TIMING" : \
    (ld == LD_GENERAL) ? "GENERAL" : \
-   (ld == LD_ERROR) ? "ERROR ": "UNDEF" )
+   (ld == LD_SCHEDULE) ? "SCHEDULE" : \
+   (ld == LD_ERROR) ? "ERROR": "UNDEF" )
 
 #define NM_LOG_PREFIX "net-modeler:"
 
 /** Enabled logging levels **/
-#define NM_LOG_LEVEL NM_INFO_ID
-#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR  |  LD_TIMING )
+#define NM_LOG_LEVEL NM_DEBUG_ID
+#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR  | LD_SCHEDULE )
 
 #define stringify(x) #x
 

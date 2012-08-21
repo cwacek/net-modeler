@@ -9,12 +9,11 @@
 #include "nm_main.h"
 #include "nm_magic.h"
 #include "nm_structures.h"
+#include "nm_proc.h"
 
 static struct nf_hook_ops nfho;
 struct iphdr *iph;
 
-#define NM_IP_MASK 0x000000FF
-#define NM_IP_NET 0x0000000A
 #define IS_NM_IP(ip) (((ip) & NM_IP_MASK) == (NM_IP_NET))
 #define NM_SEEN(iph) (iph->tos == TOS_MAGIC)
 
@@ -39,6 +38,10 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
   }
 
   nm_debug(LD_TIMING,"Received packet at %lldns\n",ktime_to_ns(nm_get_time()));
+  if (!nm_model._initialized){
+    nm_notice(LD_GENERAL,"Rejecting filtered packet because no model is initialized\n");
+    return NF_DROP;
+  }
 
   return NF_QUEUE;
 }
@@ -54,6 +57,7 @@ ktime_t update(struct nm_global_sched *sch)
   struct nm_packet *pkt;
   int missed_intervals, i, dequeued_ctr = 0;
   unsigned long lock_flags;
+  nm_hop_t *hop;
   ktime_t now = sch->timer.base->get_time();
   log_func_entry;
   lock_flags = 0;
@@ -71,19 +75,48 @@ ktime_t update(struct nm_global_sched *sch)
       nm_schedule_lock_acquire(lock_flags);
       pkt = slot_pull(&scheduler_slot(sch,i));
       nm_schedule_lock_release(lock_flags);
-      if (!pkt)
-        break;
-      if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) {
-        /** If this was a hop in progress, we want to enqueue rather than
-         * reinject **/
-        /*nm_enqueue(pkt,path_dist(path_id,path_idx) - pkt->hop_progress);*/
-      } else {
-        dequeued_ctr++;
-        nm_debug(LD_GENERAL,"dequeued packet: "IPH_FMT"\n",
-                    IPH_FMT_DATA(queue_entry_iph(pkt->data)));
 
-        nf_reinject(pkt->data,NF_ACCEPT);
-        nm_packet_free(pkt);
+      if (likely(!pkt))
+        break;
+
+      /* Figure out the tailexit for the hop */
+      if (!pkt->path)
+        break;
+      hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
+      
+      /** If this was a hop in progress, we want to enqueue rather than
+       * reinject **/
+      if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) 
+      {
+        /* Adjust hop exit by the amount we've traveled. */
+        hop->tailexit -= pkt->hop_progress;
+        nm_debug(LD_SCHEDULE, "Set tailexit for partially completed hop %u to %u. %u slots remain [index: %llu]",
+                  pkt->path->hops[pkt->path_idx],hop->tailexit,pkt->hop_cost,scheduler_index());
+
+        nm_enqueue(pkt, pkt->hop_cost - pkt->hop_progress);
+      } 
+      else 
+      {
+        hop->tailexit -= pkt->hop_cost - pkt->hop_progress;
+        nm_debug(LD_SCHEDULE, "Set tailexit for hop %u to %u [index: %llu]",
+                  pkt->path->hops[pkt->path_idx],hop->tailexit,scheduler_index());
+
+        /* If we have reached the last hop, then we should reinject.
+         * Otherwise we should enqueue for the next hop */
+        if (++(pkt->path_idx) < pkt->path->len){
+          if (unlikely((nm_enqueue(pkt,calc_delay(pkt))) < 0)){
+            nm_warn(LD_ERROR,"CRITICAL ERROR: Failed to reenqueue packet "
+                             "for hop %u\n",pkt->path_idx);
+          }
+          nm_debug(LD_SCHEDULE,"Scheduling packet on next hop %u\n",
+                                pkt->path_idx);
+        } else {
+          dequeued_ctr++;
+          nm_debug(LD_GENERAL,"dequeued packet: "IPH_FMT"\n",
+                      IPH_FMT_DATA(queue_entry_iph(pkt->data)));
+          nf_reinject(pkt->data,NF_ACCEPT);
+          nm_packet_free(pkt);
+        }
       }
     }
   }
@@ -112,13 +145,14 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
                        queue_entry_iph(entry)->saddr, 
                        queue_entry_iph(entry)->daddr);
   
+  
   if (unlikely(!pkt))
     return -ENOMEM;
   
-  if (unlikely((err = nm_enqueue(pkt,10 - (scheduler_index() - index))) < 0))
+  if (unlikely((err = nm_enqueue(pkt,calc_delay(pkt) - (scheduler_index() - index))) < 0))
     return err;
 
-  nm_debug(LD_TIMING,"Completed packet enqueue at %lldns\n",ktime_to_ns(nm_get_time()));
+  nm_debug(LD_TIMING,"Completed packet enqueue at %lldns [index: %llu]\n",ktime_to_ns(nm_get_time()),index);
 
   return 0;
 }
@@ -144,6 +178,8 @@ static int __init nm_init(void)
 
   nf_register_hook(&nfho);
 
+  check_call(initialize_proc_interface());
+
   /* Initialize the global scheduler */
   if (nm_init_sched(update) < 0){
      nm_warn(LD_ERROR,"Failed to initialize scheduler\n");
@@ -166,6 +202,7 @@ static void nm_exit(void)
   nf_unregister_queue_handler(PF_INET,&_queueh);
   nm_cleanup_sched();
   nm_structures_release();
+  cleanup_proc_interface();
   nm_notice(LD_GENERAL,"Unloading\n");
 }
 

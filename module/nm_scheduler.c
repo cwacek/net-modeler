@@ -126,16 +126,65 @@ nm_packet_t * slot_pull(struct calendar_slot *slot)
   return pulled;
 }
 
-/** Enqueue a packet into the calendar at an offset from now **/
-int nm_enqueue(nm_packet_t *data,uint16_t offset)
+/** Calculate how much to delay a packet as it
+ *  transits a hop.
+ *
+ *  Return -1 if we can't figure it out for some reason.**/
+inline int32_t calc_delay(nm_packet_t *pkt)
 {
+  nm_hop_t *hop;
+  uint32_t delay;
+  delay = 0;
+  /* The delay should be the latency + how long it
+   * will take the packet to cross the link based on 
+   * bw */
+
+  if (unlikely( !pkt || !pkt->path || pkt->path->valid != TOS_MAGIC)){
+    nm_warn(LD_ERROR,"Can't route packet, "
+                      "it has no designated path\n");
+    return -1;
+  }
+
+  hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
+
+  if (hop->bw_limit != 0)
+  {
+    /* We need to do bandwidth */
+    /* packet size is given by pkt->data->skb->len */
+    delay += pkt->data->skb->len / hop->bw_limit;
+  }
+  delay += hop->delay_ms;
+  if (likely(!(pkt->flags & NM_FLAG_HOP_INCOMPLETE)))
+    pkt->hop_cost = delay;
+  delay += hop->tailexit;
+
+  nm_debug(LD_SCHEDULE, "Calculated delay for packet (size: %u) on hop %u as %u ms. "
+                        "[bw: %u, latency: %u, curr_tailexit: %u]\n",
+                          pkt->data->skb->len, pkt->path->hops[pkt->path_idx],
+                          delay, hop->bw_limit, hop->delay_ms, hop->tailexit );
+
+  hop->tailexit = delay;
+
+  return delay;
+}
+
+/** Enqueue a packet into the calendar at an offset from now **/
+int nm_enqueue(nm_packet_t *data,int16_t offset)
+{
+  if (unlikely(offset < 0))
+    return -1;
+
   if (unlikely(!one_hop_schedulable(offset))){
-    offset = CALENDAR_BUF_LEN;
-    data->hop_progress += CALENDAR_BUF_LEN;
+    offset = CALENDAR_BUF_LEN - 1;
+    data->hop_progress += offset;
     data->flags |= NM_FLAG_HOP_INCOMPLETE; 
+    nm_debug(LD_SCHEDULE, "Scheduling partial packet with offset %u. Total cost: %u. Progress: %u [index: %llu]",
+                          offset, data->hop_cost,data->hop_progress,scheduler_index());
   } else {
     data->flags  = data->flags & ~NM_FLAG_HOP_INCOMPLETE;
+    nm_debug(LD_SCHEDULE, "Scheduling whole packet with offset %u. [index: %llu]",offset,scheduler_index());
   }
+
 
   spin_lock(&nm_calendar_lock);
   slot_add_packet(&scheduler_slot((&nm_sched),offset), data);
