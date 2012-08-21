@@ -106,7 +106,9 @@ static int write_pathtable(struct file *filp, const char __user *buf, unsigned l
     return -EINVAL;
   }
 
-  nm_info(LD_GENERAL,"Registering path from %u to %u.\n",ip_int_idx(path.src),ip_int_idx(path.dst));
+  nm_info(LD_GENERAL,"Registering path from %u to %u @[%u][%u].\n",
+                      path.src,path.dst,
+                      ip_int_idx(path.src),ip_int_idx(path.dst));
 
   #define find(src,dst) nm_model._pathtable[ip_int_idx(src)][ip_int_idx(dst)]
   find(path.src,path.dst).src = path.src;

@@ -40,6 +40,7 @@ nm_packet_t *
 nm_packet_init(struct nf_queue_entry *data,uint32_t src,uint32_t dst)
 {
   nm_packet_t *pkt = nm_alloc(NM_PKT_ALLOC,GFP_ATOMIC);
+  nm_debug(LD_GENERAL,"Initializing packet from %u to %u\n",src,dst);
   pkt->data = data;
   pkt->path_idx = 0;
   pkt->path = _lookup_path(src,dst);
