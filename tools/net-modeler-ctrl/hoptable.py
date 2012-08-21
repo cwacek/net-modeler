@@ -38,7 +38,10 @@ def set_hops(args):
   if __check_zero('id',args.hopid):
     sys.exit(-1)
 
-  bytestr = struct.pack(hop_proc_fmt,args.hopid,args.bw,args.latency)
+  # We input bw in KBps, and need it in B/ms
+  bw = args.bw *1024 / 1000
+
+  bytestr = struct.pack(hop_proc_fmt,args.hopid,bw,args.latency)
 
   if not os.path.exists(HOPTABLE_PROC):
     print "Cannot open proc interface: '{0}' does not appear to exist".format(HOPTABLE_PROC)

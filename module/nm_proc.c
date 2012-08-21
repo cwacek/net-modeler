@@ -139,7 +139,7 @@ static int read_hoptable(char *page, char **start, off_t off, int count, int *eo
                             atomic_read(&nm_model.hops_loaded),
                             nm_model.info.n_hops);
     for (i=0; i < atomic_read(&nm_model.hops_loaded); i++){
-      len += sprintf(page+len, "Hop %u: %u bps %u ms\n",i,nm_model._hoptable[i].bw_limit,nm_model._hoptable[i].delay_ms);
+      len += sprintf(page+len, "Hop %u: %u b/ms %u ms\n",i,nm_model._hoptable[i].bw_limit,nm_model._hoptable[i].delay_ms);
     } 
   } 
   else {
