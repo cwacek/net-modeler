@@ -93,7 +93,7 @@ ktime_t update(struct nm_global_sched *sch)
         nm_debug(LD_SCHEDULE, "Set tailexit for partially completed hop %u to %u. %u slots remain [index: %llu]",
                   pkt->path->hops[pkt->path_idx],hop->tailexit,pkt->hop_cost,scheduler_index());
 
-        nm_enqueue(pkt, pkt->hop_cost - pkt->hop_progress);
+        nm_enqueue(pkt, total_pkt_cost(pkt) - pkt->hop_progress);
       } 
       else 
       {

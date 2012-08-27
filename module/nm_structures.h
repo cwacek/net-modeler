@@ -12,6 +12,8 @@ typedef struct nm_path nm_path_t;
 
 /** The packet flagged this way is in the middle of an incomplete hop **/
 #define NM_FLAG_HOP_INCOMPLETE 1
+/** A packet flagged this way is not scheduleable because of a taildelay preceding it **/
+#define NM_FLAG_HOP_TAILDELAYED 2
 
 struct nm_packet {
   struct nf_queue_entry *data;
@@ -22,13 +24,17 @@ struct nm_packet {
   /* Keep track of how far we've scheduled for hops
    * longer than the max scheduler */
   uint16_t hop_progress; 
-  /* The total cost of transiting the current hop. */
+  /* The cost of *transitting* the current hop. */
   uint16_t hop_cost;
+  /* The cost of waiting for us to be queued on the current hop. */
+  uint16_t hop_tailwait;
   uint16_t flags;
   /** Linked list helpers **/
   struct nm_packet *next;
 };
 typedef struct nm_packet nm_packet_t;
+
+#define total_pkt_cost(pkt) (pkt)->hop_cost + (pkt)->hop_tailwait
 
 #define NM_PKT_ALLOC nm_packets
 #define SOCKADDR_ALLOC sockaddrs
