@@ -10,3 +10,7 @@
 *.lai
 *.la
 *.a
+
+
+# Compiled Python files
+*.pyc
