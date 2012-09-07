@@ -22,9 +22,10 @@ sudo $bin pathtable set 10.0.0.2 10.0.0.1 1
 error_out
 sudo $bin pathtable set 10.0.0.3 10.0.0.1 0 2
 error_out
-sudo $bin pathtable set 10.0.0.1 10.0.0.3 0 3
+sudo $bin pathtable set 10.0.0.1 10.0.0.3 3 1
 error_out                                   
 
 
 sudo ifconfig eth0:1 10.0.0.1
 sudo ifconfig eth0:2 10.0.0.2
+sudo ifconfig eth0:3 10.0.0.3

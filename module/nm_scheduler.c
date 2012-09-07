@@ -162,7 +162,7 @@ inline int32_t calc_delay(nm_packet_t *pkt)
   pkt->hop_tailwait = hop->tailexit;
 
   nm_debug(LD_SCHEDULE, "Calculated delay for packet (size: %u) on hop %u as %u ms. "
-                        "[bw: %u, latency: %u, curr_tailexit: %u]\n",
+                        "[bw: %u, latency: %u, curr_tailexit: %u] \n",
                           pkt->data->skb->len, pkt->path->hops[pkt->path_idx],
                           delay, hop->bw_limit, hop->delay_ms, hop->tailexit );
 
@@ -178,15 +178,20 @@ int nm_enqueue(nm_packet_t *data,int16_t offset)
     return -1;
 
   if (unlikely(!one_hop_schedulable(offset))){
-    offset = CALENDAR_BUF_LEN - 1;
-    data->hop_progress = offset;
+    offset = CALENDAR_BUF_LEN -1;
     data->flags |= NM_FLAG_HOP_INCOMPLETE; 
-    nm_debug(LD_SCHEDULE, "Scheduling partial packet with offset %u. Total cost: %u. Progress: %u [index: %llu]",
+    nm_debug(LD_SCHEDULE, "Scheduling partial packet with offset %u."
+                          " Total cost: %u. Progress: %u [index: %llu]",
                           offset, data->hop_cost,data->hop_progress,scheduler_index());
   } else {
     data->flags  = data->flags & ~NM_FLAG_HOP_INCOMPLETE;
-    nm_debug(LD_SCHEDULE, "Scheduling whole packet with offset %u. [index: %llu]",offset,scheduler_index());
+    nm_debug(LD_SCHEDULE, "Scheduling complete packet with offset %u. "
+                          "Total cost: %u. Progress: %u [index: %llu]",
+                          offset, data->hop_cost,data->hop_progress,scheduler_index());
   }
+
+  data->scheduled_amt = offset;
+  data->hop_progress += offset;
 
   spin_lock(&nm_calendar_lock);
   slot_add_packet(&scheduler_slot((&nm_sched),offset), data);

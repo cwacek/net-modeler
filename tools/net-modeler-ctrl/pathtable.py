@@ -36,7 +36,7 @@ def __ip_to_id(ip):
 def set_path(args):
 
   # hopid, bw, latency
-  path_static_fmt  = "IIBB"
+  path_static_fmt  = "=IIBB"
   src = __ip_to_id(args.src_ip)
   dst = __ip_to_id(args.dst_ip)
   nhops = len(args.hops)
@@ -54,6 +54,8 @@ def set_path(args):
   if not os.path.exists(PATHTABLE_PROC):
     print "Cannot open proc interface: '{0}' does not appear to exist".format(PATHTABLE_PROC)
     sys.exit(1)
+
+  sys.stderr.write("Writing {0} bytes to pathtable\n".format(len(bytestr)))
 
   try:
     with open(PATHTABLE_PROC,'w') as procf:

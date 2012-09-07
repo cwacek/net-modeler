@@ -56,6 +56,7 @@ ktime_t update(struct nm_global_sched *sch)
 {
   struct nm_packet *pkt;
   int missed_intervals, i, dequeued_ctr = 0;
+  int16_t prog_past_tail;
   unsigned long lock_flags;
   nm_hop_t *hop;
   ktime_t now = sch->timer.base->get_time();
@@ -83,27 +84,49 @@ ktime_t update(struct nm_global_sched *sch)
       if (!pkt->path)
         break;
       hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
+      nm_debug(LD_SCHEDULE, "Dequeued packet on hop %u. [tailexit: %u]",
+                pkt->path->hops[pkt->path_idx], hop->tailexit);
       
       /** If this was a hop in progress, we want to enqueue rather than
        * reinject **/
       if (unlikely(pkt->flags & NM_FLAG_HOP_INCOMPLETE)) 
       {
         /* Adjust hop exit by the amount we've traveled. */
-        hop->tailexit -= pkt->hop_progress;
-        nm_debug(LD_SCHEDULE, "Set tailexit for partially completed hop %u to %u. %u slots remain [index: %llu]",
-                  pkt->path->hops[pkt->path_idx],hop->tailexit,pkt->hop_cost,scheduler_index());
+        /* If hop_progress > tailwait, that means that we're now
+         * addressing the portion of the delay that affects the tailwait. 
+         * This is likely to occur if the packet payload is simply bigger than
+         * the delay window. */
+        prog_past_tail = pkt->hop_progress - pkt->hop_tailwait;
+        if (prog_past_tail > 0)
+        {
+          /* At most, we can only remove as much as we were scheduled for */
+          hop->tailexit -= (prog_past_tail > pkt->scheduled_amt) ? 
+                                pkt->scheduled_amt : prog_past_tail;
+        }
+
+        nm_debug(LD_SCHEDULE, "Set tailexit for partial hop %u "
+                              "[scheduled: %u total: %u] to %u. [index: %llu]",
+                  pkt->path->hops[pkt->path_idx],
+                  pkt->scheduled_amt,
+                  pkt->hop_progress,
+                  hop->tailexit,scheduler_index());
 
         nm_enqueue(pkt, total_pkt_cost(pkt) - pkt->hop_progress);
       } 
       else 
       {
-        hop->tailexit -= pkt->hop_cost - pkt->hop_progress;
-        nm_debug(LD_SCHEDULE, "Set tailexit for hop %u to %u [index: %llu]",
-                  pkt->path->hops[pkt->path_idx],hop->tailexit,scheduler_index());
+        hop->tailexit -= pkt->scheduled_amt;
+        nm_debug(LD_SCHEDULE, "Set tailexit for partial hop %u "
+                              "[scheduled: %u total: %u] to %u. [index: %llu]",
+                  pkt->path->hops[pkt->path_idx],
+                  pkt->scheduled_amt,
+                  pkt->hop_progress,
+                  hop->tailexit,scheduler_index());
 
         /* If we have reached the last hop, then we should reinject.
          * Otherwise we should enqueue for the next hop */
         if (++(pkt->path_idx) < pkt->path->len){
+          pkt->hop_progress =  pkt->scheduled_amt = pkt->hop_tailwait = pkt->hop_cost = 0;
           if (unlikely((nm_enqueue(pkt,calc_delay(pkt))) < 0)){
             nm_warn(LD_ERROR,"CRITICAL ERROR: Failed to reenqueue packet "
                              "for hop %u\n",pkt->path_idx);
@@ -112,7 +135,7 @@ ktime_t update(struct nm_global_sched *sch)
                                 pkt->path_idx);
         } else {
           dequeued_ctr++;
-          nm_debug(LD_GENERAL,"dequeued packet: "IPH_FMT"\n",
+          nm_debug(LD_GENERAL,"Delivering packet: "IPH_FMT"\n",
                       IPH_FMT_DATA(queue_entry_iph(pkt->data)));
           nf_reinject(pkt->data,NF_ACCEPT);
           nm_packet_free(pkt);

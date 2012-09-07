@@ -21,8 +21,9 @@ struct nm_packet {
   nm_path_t *path;
   /** The hop index on the current path */
   uint32_t path_idx;               
-  /* Keep track of how far we've scheduled for hops
-   * longer than the max scheduler */
+  /* The current amount scheduled. May be equal to or less than hop_progress */
+  uint16_t scheduled_amt;
+  /* Keep track of how far we've progressed, including waiting time and transit time. */
   uint16_t hop_progress; 
   /* The cost of *transitting* the current hop. */
   uint16_t hop_cost;
@@ -77,7 +78,7 @@ struct nm_hop {
   uint32_t delay_ms;
   /** The time the last packet queued is scheduled to exit 
    * this hop */
-  uint16_t tailexit;
+  uint32_t tailexit;
 };
 typedef struct nm_hop nm_hop_t;
 

@@ -86,8 +86,11 @@ static int read_pathtable(char *page, char **start, off_t off, int count, int *e
 static int write_pathtable(struct file *filp, const char __user *buf, unsigned long len, void *data)
 {
   nm_path_t path;
-  size_t hops_offset;
-  hops_offset = sizeof(nm_path_t) - sizeof(nm_hop_t *) ;
+  size_t hops_offset,buf_ctr;
+  int err,i;
+  char strbuf[256];
+  buf_ctr = 0;
+  hops_offset = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint8_t) ;
 
   if (!nm_model._initialized)
   {
@@ -98,8 +101,11 @@ static int write_pathtable(struct file *filp, const char __user *buf, unsigned l
   /** Check if we have enough data. Don't count the pointer
    *  size though.
    **/
-  if ( len < (sizeof(nm_path_t) - sizeof(uint32_t*)))
+  if ( len < 10 )
     return -EOVERFLOW;
+
+  nm_debug(LD_GENERAL,"Sizes - nm_path_t:%lu uint32_t:%lu hop_offset:%lu\n",
+                  sizeof(nm_path_t),sizeof(uint32_t *),hops_offset);
 
   /* We copy the first three elements of path_t, but not the hop array. 
    * Memory needs to be alloc-ed before we can copy the hop array, and 
@@ -122,7 +128,7 @@ static int write_pathtable(struct file *filp, const char __user *buf, unsigned l
     return -EINVAL;
   }
 
-  nm_info(LD_GENERAL,"Registering path from %u to %u @[%u][%u].\n",
+  nm_info(LD_GENERAL,"Registering path from %u to %u @[%u][%u] as \n",
                       path.src,path.dst,
                       ip_int_idx(path.src),ip_int_idx(path.dst));
 
@@ -140,7 +146,19 @@ static int write_pathtable(struct file *filp, const char __user *buf, unsigned l
   }
 
   find(path.src,path.dst).hops = kmalloc(sizeof(uint32_t) * path.len,GFP_KERNEL);
-  copy_from_user((find(path.src,path.dst).hops),buf+hops_offset,sizeof(uint32_t)*path.len);
+  if ((err = copy_from_user((find(path.src,path.dst).hops),buf+hops_offset,sizeof(uint32_t)*path.len)) != 0)
+  {
+    nm_warn(LD_ERROR,"Failed to copy hops from user [%d]\n",err);
+    return -EINVAL;
+  }
+
+  for (i = 0; i < path.len; i++)
+  {
+    buf_ctr += snprintf(strbuf+buf_ctr,256-buf_ctr,"%d ",find(path.src,path.dst).hops[i]);
+  }
+  nm_info(LD_GENERAL, "Registered as [%s]\n",strbuf);
+
+
   #undef find
   
   return len;
@@ -203,13 +221,14 @@ static int write_hoptable(struct file *filp, const char __user *buf, unsigned lo
 
   nm_model._hoptable[hop.id].bw_limit = hop.bw_limit;
   nm_model._hoptable[hop.id].delay_ms = hop.delay_ms;
-  nm_model._hoptable[hop.id].tailexit = 0;
 
   if (hop.id >= atomic_read(&nm_model.hops_loaded)){
     atomic_inc(&nm_model.hops_loaded);
+    nm_model._hoptable[hop.id].tailexit = 0;
     nm_info(LD_GENERAL, "Loaded hop %u\n",hop.id);
   } else 
   {
+    nm_model._hoptable[hop.id].tailexit = 0;
     nm_info(LD_GENERAL, "Reloaded existing hop %u\n",hop.id);
   }
 
