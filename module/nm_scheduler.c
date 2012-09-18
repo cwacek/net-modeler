@@ -114,7 +114,7 @@ static inline void slot_add_packet(struct calendar_slot *slot, nm_packet_t *p)
 
 /** Pull a nm_packet_t from the calendar slot, or return
  * zero if none exist */
-nm_packet_t * slot_pull(struct calendar_slot *slot)
+inline nm_packet_t * slot_pull(struct calendar_slot *slot)
 {
   nm_packet_t *pulled;
 

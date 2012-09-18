@@ -49,7 +49,7 @@ nm_packet_init(struct nf_queue_entry *data,uint32_t src,uint32_t dst)
   return pkt;
 }
 
-void nm_packet_free(nm_packet_t *pkt)
+inline void nm_packet_free(nm_packet_t *pkt)
 {
   nm_free(NM_PKT_ALLOC,pkt);
   return;
