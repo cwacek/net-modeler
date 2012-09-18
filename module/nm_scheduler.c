@@ -10,7 +10,7 @@ struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
 static uint8_t shutdown_requested = 0;
-
+static DEFINE_SEMAPHORE(callback_in_progress);
 
 #if NM_LOG_LEVEL & NM_DEBUG_ID
 #define spin_lock_irq_debug(lock, flag) \
@@ -83,22 +83,27 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
 {
   ktime_t interval;
   log_func_entry;
-  if (shutdown_requested)
-    return HRTIMER_NORESTART;
 
-  /*if (hrtimer_in(hrt)){*/
-    /*nm_log(NM_NOTICE,"Timer callback called, but timer was in active state.\n");*/
-    /*return HRTIMER_NORESTART;*/
-  /*}*/
+  if (down_trylock(&callback_in_progress) < 0)
+  {
+    nm_notice(LD_ERROR,"Timer callback called, but timer was in active state.\n");
+    goto end;
+  }
+
+  if (shutdown_requested)
+    goto end;
 
   interval = nm_sched.callback(&nm_sched);
   if (unlikely(ktime_to_ns(interval) == 0))
-    return HRTIMER_NORESTART;
+    goto end;
 
   if (unlikely(hrtimer_start(&nm_sched.timer,interval,HRTIMER_MODE_ABS) < 0)){
     nm_notice(LD_ERROR,"Failed to schedule timer\n");
-    return HRTIMER_NORESTART;
+    goto end;
   }
+
+end:
+  up(&callback_in_progress);
   return HRTIMER_NORESTART;
 }
 

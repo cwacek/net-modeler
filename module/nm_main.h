@@ -7,6 +7,7 @@
 #include <linux/netfilter_ipv4.h>
 #include <linux/skbuff.h>
 #include <linux/ip.h>
+#include <linux/semaphore.h>
 #include <linux/tcp.h>
 #include <linux/kfifo.h>
 #include <net/netfilter/nf_queue.h>
