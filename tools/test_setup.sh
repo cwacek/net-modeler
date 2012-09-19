@@ -8,13 +8,13 @@ bin="python net-modeler-ctrl/net_modeler.py"
 
 sudo $bin modelinfo set 21 "Test" 4 3
 error_out
-sudo $bin hoptable set 0 100 10
+sudo $bin hoptable set 0 100 10 100
 error_out
-sudo $bin hoptable set 1 100 10
+sudo $bin hoptable set 1 100 10 100
 error_out
-sudo $bin hoptable set 2 20 30
+sudo $bin hoptable set 2 20 30 100
 error_out
-sudo $bin hoptable set 3 20 30
+sudo $bin hoptable set 3 20 30 100
 error_out
 sudo $bin pathtable set 10.0.0.1 10.0.0.2 0
 error_out

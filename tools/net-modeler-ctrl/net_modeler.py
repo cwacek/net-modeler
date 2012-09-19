@@ -58,6 +58,8 @@ def hoptable_args(main_subparser):
                             type=int)
   hoptable_set.add_argument('latency', help="The latency of this hop in milliseconds",
                             type=int)
+  hoptable_set.add_argument('qlen', help="The buffer queue length of this hop.",
+                            type=int,default=100)
 
 def main():
   

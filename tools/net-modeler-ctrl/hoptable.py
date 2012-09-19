@@ -30,18 +30,20 @@ def __check_zero(name,arg,fmt=sys.stderr):
 def set_hops(args):
 
   # hopid, bw, latency
-  hop_proc_fmt = "III"
+  hop_proc_fmt = "IIII"
   if __check_zero('bw',args.bw):
     sys.exit(-1)
   if __check_zero('latency',args.latency):
     sys.exit(-1)
   if __check_zero('id',args.hopid):
     sys.exit(-1)
+  if __check_zero('qlen',args.qlen):
+    sys.exit(-1)
 
   # We input bw in KBps, and need it in B/ms
   bw = args.bw *1024 / 1000
 
-  bytestr = struct.pack(hop_proc_fmt,args.hopid,bw,args.latency)
+  bytestr = struct.pack(hop_proc_fmt,args.hopid,bw,args.latency,args.qlen)
 
   if not os.path.exists(HOPTABLE_PROC):
     print "Cannot open proc interface: '{0}' does not appear to exist".format(HOPTABLE_PROC)
