@@ -1,6 +1,15 @@
 #ifndef __KERN_NM_LOG__
 #define __KERN_NM_LOG__
 
+
+/* Specific Formatters */
+#define IPH_FMT "[id:%hu src:%pI4 dst:%pI4 proto:%u ttl:%u]"
+#define IPH_FMT_DATA(iph) (iph)->id, &(iph)->saddr, &(iph)->daddr, (iph)->protocol, (iph)->ttl
+#define PKT_FMT "[ Hop %u of %u (%u) ; sched|prog|cost|wait %u|%u|%u|%u ; ]"
+#define PKT_FMT_DATA(pkt) (pkt)->path_idx, (pkt)->path->len, pkt->path->hops[pkt->path_idx], \
+                          (pkt)->scheduled_amt, (pkt)->hop_progress, (pkt)->hop_cost, (pkt->hop_tailwait)
+
+
 #define NM_WARN warn
 #define NM_NOTICE notice
 #define NM_INFO info

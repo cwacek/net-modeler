@@ -20,8 +20,8 @@ struct iphdr *iph;
 #define queue_entry_iph(x) ((struct iphdr *)skb_network_header((x)->skb))
 
 unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
-                       const struct net_device *in,
-                       const struct net_device *out,
+    const struct net_device *in,
+    const struct net_device *out,
                        int (*okfn)(struct sk_buff *))
 {
 
@@ -59,6 +59,7 @@ ktime_t update(struct nm_global_sched *sch)
   int16_t prog_past_tail;
   unsigned long lock_flags;
   nm_hop_t *hop;
+  uint16_t old_tailexit;
   ktime_t now = sch->timer.base->get_time();
   log_func_entry;
   lock_flags = 0;
@@ -84,8 +85,9 @@ ktime_t update(struct nm_global_sched *sch)
       if (!pkt->path)
         break;
       hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
-      nm_debug(LD_SCHEDULE, "Dequeued packet on hop %u. [tailexit: %u]",
-                pkt->path->hops[pkt->path_idx], hop->tailexit);
+      nm_debug(LD_SCHEDULE, "Processing. "IPH_FMT" "PKT_FMT" tailexit: %u]",
+                      IPH_FMT_DATA(queue_entry_iph(pkt->data)),
+                      PKT_FMT_DATA(pkt), hop->tailexit);
       
       /** If this was a hop in progress, we want to enqueue rather than
        * reinject **/
@@ -96,6 +98,7 @@ ktime_t update(struct nm_global_sched *sch)
          * addressing the portion of the delay that affects the tailwait. 
          * This is likely to occur if the packet payload is simply bigger than
          * the delay window. */
+        old_tailexit =  hop->tailexit;
         prog_past_tail = pkt->hop_progress - pkt->hop_tailwait;
         if (prog_past_tail > 0)
         {
@@ -104,24 +107,26 @@ ktime_t update(struct nm_global_sched *sch)
                                 pkt->scheduled_amt : prog_past_tail;
         }
 
-        nm_debug(LD_SCHEDULE, "Set tailexit for partial hop %u "
-                              "[scheduled: %u total: %u] to %u. [index: %llu]",
+        nm_debug(LD_SCHEDULE, "Adjust tailexit. %u: %u -> %u "
+                              "[index: %llu]",
                   pkt->path->hops[pkt->path_idx],
-                  pkt->scheduled_amt,
-                  pkt->hop_progress,
-                  hop->tailexit,scheduler_index());
+                  old_tailexit,
+                  hop->tailexit,
+                  scheduler_index());
 
         nm_enqueue(pkt, ENQUEUE_HOP_CURRENT, 0);
       } 
       else 
       {
+        old_tailexit = hop->tailexit;
         hop->tailexit -= pkt->scheduled_amt;
-        nm_debug(LD_SCHEDULE, "Set tailexit for partial hop %u "
-                              "[scheduled: %u total: %u] to %u. [index: %llu]",
+        nm_debug(LD_SCHEDULE, "Adjust tailexit. %u: %u -> %u "
+                              "[index: %llu]",
                   pkt->path->hops[pkt->path_idx],
-                  pkt->scheduled_amt,
-                  pkt->hop_progress,
-                  hop->tailexit,scheduler_index());
+                  old_tailexit,
+                  hop->tailexit,
+                  scheduler_index());
+
         /* Remove a packet from the hops buffer */
         hop->qfill--;
 
@@ -134,11 +139,12 @@ ktime_t update(struct nm_global_sched *sch)
                              "for hop %u\n",pkt->path_idx);
             nf_reinject(pkt->data,NF_DROP);
           }
-          nm_debug(LD_SCHEDULE,"Scheduling packet on next hop %u\n",
+          nm_debug(LD_SCHEDULE,"Scheduling packet "PKT_FMT" on next hop %u\n",
+                                PKT_FMT_DATA(pkt),
                                 pkt->path_idx);
         } else {
           dequeued_ctr++;
-          nm_debug(LD_GENERAL,"Delivering packet: "IPH_FMT"\n",
+          nm_debug(LD_GENERAL,"Packet Delivered. "IPH_FMT"\n",
                       IPH_FMT_DATA(queue_entry_iph(pkt->data)));
           nf_reinject(pkt->data,NF_ACCEPT);
           nm_packet_free(pkt);

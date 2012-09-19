@@ -26,8 +26,6 @@
 #define ENQUEUE_HOP_NEW (0x1 << 0)
 /** This enqueue request is for the same hop we were on before **/
 #define ENQUEUE_HOP_CURRENT (0x1 << 1)
-#define IPH_FMT "[id:%hu src:%pI4 dst:%pI4 proto:%u ttl:%u]"
-#define IPH_FMT_DATA(iph) (iph)->id, &(iph)->saddr, &(iph)->daddr, (iph)->protocol, (iph)->ttl
 
 #define check_call(x) if ((x) < 0) nm_warn(LD_TRACE,"Call "#x" failed\n")
 #define NM_IP_MASK 0x000000FF
