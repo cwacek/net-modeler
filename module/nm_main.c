@@ -111,7 +111,7 @@ ktime_t update(struct nm_global_sched *sch)
                   pkt->hop_progress,
                   hop->tailexit,scheduler_index());
 
-        nm_enqueue(pkt, total_pkt_cost(pkt) - pkt->hop_progress);
+        nm_enqueue(pkt, ENQUEUE_HOP_CURRENT, 0);
       } 
       else 
       {
@@ -122,14 +122,17 @@ ktime_t update(struct nm_global_sched *sch)
                   pkt->scheduled_amt,
                   pkt->hop_progress,
                   hop->tailexit,scheduler_index());
+        /* Remove a packet from the hops buffer */
+        hop->qfill--;
 
         /* If we have reached the last hop, then we should reinject.
          * Otherwise we should enqueue for the next hop */
         if (++(pkt->path_idx) < pkt->path->len){
           pkt->hop_progress =  pkt->scheduled_amt = pkt->hop_tailwait = pkt->hop_cost = 0;
-          if (unlikely((nm_enqueue(pkt,calc_delay(pkt))) < 0)){
+          if (unlikely((nm_enqueue(pkt,ENQUEUE_HOP_NEW, 0)) < 0)){
             nm_warn(LD_ERROR,"CRITICAL ERROR: Failed to reenqueue packet "
                              "for hop %u\n",pkt->path_idx);
+            nf_reinject(pkt->data,NF_DROP);
           }
           nm_debug(LD_SCHEDULE,"Scheduling packet on next hop %u\n",
                                 pkt->path_idx);
@@ -172,7 +175,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   if (unlikely(!pkt))
     return -ENOMEM;
   
-  if (unlikely((err = nm_enqueue(pkt,calc_delay(pkt) - (scheduler_index() - index))) < 0))
+  if (unlikely((err = nm_enqueue(pkt,ENQUEUE_HOP_NEW, 0 - (scheduler_index() - index))) < 0))
     return err;
 
   nm_debug(LD_TIMING,"Completed packet enqueue at %lldns [index: %llu]\n",ktime_to_ns(nm_get_time()),index);

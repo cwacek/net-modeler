@@ -79,6 +79,10 @@ struct nm_hop {
   /** The time the last packet queued is scheduled to exit 
    * this hop */
   uint32_t tailexit;
+  /** The number of packets that can be buffered on this hop **/
+  uint32_t qlen;
+  /** The number of packets currently queued on this hop **/
+  uint32_t qfill;
 };
 typedef struct nm_hop nm_hop_t;
 

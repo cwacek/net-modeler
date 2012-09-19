@@ -136,9 +136,8 @@ inline nm_packet_t * slot_pull(struct calendar_slot *slot)
  *  not it's going to take multiple hops.
  *
  *  Return -1 if we can't figure it out for some reason.**/
-inline int32_t calc_delay(nm_packet_t *pkt)
+inline int32_t calc_delay(nm_packet_t *pkt,nm_hop_t *hop)
 {
-  nm_hop_t *hop;
   uint32_t delay;
   delay = 0;
   /* The delay should be the latency + how long it
@@ -150,8 +149,6 @@ inline int32_t calc_delay(nm_packet_t *pkt)
                       "it has no designated path\n");
     return -1;
   }
-
-  hop = &nm_model._hoptable[pkt->path->hops[pkt->path_idx]];
 
   if (hop->bw_limit != 0)
   {
@@ -177,10 +174,33 @@ inline int32_t calc_delay(nm_packet_t *pkt)
 }
 
 /** Enqueue a packet into the calendar at an offset from now **/
-int nm_enqueue(nm_packet_t *data,int16_t offset)
+int nm_enqueue(nm_packet_t *data,char flags,int adjust)
 {
-  if (unlikely(offset < 0))
+  uint16_t offset;
+  nm_hop_t *hop;
+  offset = 0;
+
+  if (flags == ENQUEUE_HOP_CURRENT)
+  {
+    offset = total_pkt_cost(data) - data->hop_progress;
+    offset += adjust;
+  } 
+  else if (flags == ENQUEUE_HOP_NEW)
+  {
+    hop = &nm_model._hoptable[data->path->hops[data->path_idx]];
+    if ( (++(hop->qfill)) >= hop->qlen)
+    {
+      nm_debug(LD_GENERAL,"Hop %u queue full. Cannot enqueue.", data->path_idx);
+      hop->qfill--;
+      return -1;
+    }
+    offset = calc_delay(data,hop);
+    offset += adjust;
+  } else 
+  {
+    nm_warn(LD_ERROR,"Bad flag to nm_enqueue");
     return -1;
+  }
 
   if (unlikely(!one_hop_schedulable(offset))){
     offset = CALENDAR_BUF_LEN -1;

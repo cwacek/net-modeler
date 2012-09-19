@@ -175,7 +175,7 @@ static int read_hoptable(char *page, char **start, off_t off, int count, int *eo
                             atomic_read(&nm_model.hops_loaded),
                             nm_model.info.n_hops);
     for (i=0; i < atomic_read(&nm_model.hops_loaded); i++){
-      len += sprintf(page+len, "Hop %u: %u b/ms %u ms\n",i,nm_model._hoptable[i].bw_limit,nm_model._hoptable[i].delay_ms);
+      len += sprintf(page+len, "Hop %u: %u b/ms %u ms qlen %u\n",i,nm_model._hoptable[i].bw_limit,nm_model._hoptable[i].delay_ms,nm_model._hoptable[i].qlen);
     } 
   } 
   else {
@@ -188,6 +188,7 @@ struct proc_hop_data {
   uint32_t id;
   uint32_t bw_limit;
   uint32_t delay_ms;
+  uint32_t qlen;
 };
 
 static int write_hoptable(struct file *filp, const char __user *buf, unsigned long len, void *data)
@@ -221,6 +222,7 @@ static int write_hoptable(struct file *filp, const char __user *buf, unsigned lo
 
   nm_model._hoptable[hop.id].bw_limit = hop.bw_limit;
   nm_model._hoptable[hop.id].delay_ms = hop.delay_ms;
+  nm_model._hoptable[hop.id].qlen = hop.qlen;
 
   if (hop.id >= atomic_read(&nm_model.hops_loaded)){
     atomic_inc(&nm_model.hops_loaded);
@@ -231,6 +233,8 @@ static int write_hoptable(struct file *filp, const char __user *buf, unsigned lo
     nm_model._hoptable[hop.id].tailexit = 0;
     nm_info(LD_GENERAL, "Reloaded existing hop %u\n",hop.id);
   }
+
+  nm_model._hoptable[hop.id].qfill = 0;
 
   return len;
 }

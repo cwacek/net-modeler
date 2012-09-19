@@ -22,6 +22,10 @@
 #define MSECS_TO_NSECS(x) ((x) * 1000000)
 #define ptr_size sizeof(void *)
 
+/** This enqueue request is for a new hop **/
+#define ENQUEUE_HOP_NEW (0x1 << 0)
+/** This enqueue request is for the same hop we were on before **/
+#define ENQUEUE_HOP_CURRENT (0x1 << 1)
 #define IPH_FMT "[id:%hu src:%pI4 dst:%pI4 proto:%u ttl:%u]"
 #define IPH_FMT_DATA(iph) (iph)->id, &(iph)->saddr, &(iph)->daddr, (iph)->protocol, (iph)->ttl
 
@@ -48,7 +52,7 @@ typedef ktime_t (*nm_cb_func)(struct nm_global_sched *);
 
 int nm_init_sched(nm_cb_func);
 void nm_cleanup_sched(void);
-int nm_enqueue(nm_packet_t *data, int16_t offset);
+int nm_enqueue(nm_packet_t *data, char flags, int adjust);
 void nm_schedule(ktime_t time);
 
 
