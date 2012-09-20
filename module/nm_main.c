@@ -174,7 +174,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
 
   if (queue_entry_iph(entry)->saddr == queue_entry_iph(entry)->daddr)
   {
-    nf_reinject(pkt->data,NF_ACCEPT);
+    nf_reinject(entry,NF_ACCEPT);
   }
 
   index = scheduler_index();
@@ -190,7 +190,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   if (unlikely(!pkt))
     return -ENOMEM;
   
-  if (unlikely((err = nm_enqueue(pkt,ENQUEUE_HOP_NEW, 0 - (scheduler_index() - index))) < 0))
+  if (unlikely((err = nm_enqueue(pkt,ENQUEUE_HOP_NEW, (scheduler_index() - index))) < 0))
   {
     nf_reinject(pkt->data,NF_DROP);
   }
