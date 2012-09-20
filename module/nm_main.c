@@ -172,6 +172,11 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   int err;
   uint64_t index;
 
+  if (queue_entry_iph(entry)->saddr == queue_entry_iph(entry)->daddr)
+  {
+    nf_reinject(pkt->data,NF_ACCEPT);
+  }
+
   index = scheduler_index();
 
   nm_debug(LD_GENERAL,"Enqueuing new packet. "IPH_FMT"\n",
@@ -186,7 +191,9 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
     return -ENOMEM;
   
   if (unlikely((err = nm_enqueue(pkt,ENQUEUE_HOP_NEW, 0 - (scheduler_index() - index))) < 0))
-    return err;
+  {
+    nf_reinject(pkt->data,NF_DROP);
+  }
 
   nm_debug(LD_TIMING,"Completed packet enqueue at %lldns [index: %llu]\n",ktime_to_ns(nm_get_time()),index);
 

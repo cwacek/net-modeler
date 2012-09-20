@@ -195,6 +195,8 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
       return -1;
     }
     offset = calc_delay(data,hop);
+    if (offset < 0)
+      return -1;
     offset += adjust;
   } else 
   {
