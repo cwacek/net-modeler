@@ -119,7 +119,11 @@ ktime_t update(struct nm_global_sched *sch)
       else 
       {
         old_tailexit = hop->tailexit;
-        hop->tailexit -= pkt->scheduled_amt;
+        prog_past_tail = pkt->hop_progress - pkt->hop_tailwait;
+        hop->tailexit -= (prog_past_tail > pkt->scheduled_amt) ? 
+                                pkt->scheduled_amt : prog_past_tail;
+
+
         nm_debug(LD_SCHEDULE, "Adjust tailexit. %u: %u -> %u "
                               "[index: %llu]",
                   pkt->path->hops[pkt->path_idx],
