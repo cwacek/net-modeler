@@ -13,26 +13,27 @@ nm_model_t nm_model = {{ 0, "None", 0, 0},
 
 void nm_structures_init()
 {
+  log_func_entry;
   nm_objects.NM_PKT_ALLOC = kmem_cache_create("nm_packets",
                                             sizeof(nm_packet_t),
                                             0, SLAB_HWCACHE_ALIGN, NULL);
-  nm_objects.SOCKADDR_ALLOC = kmem_cache_create("sockaddrs",
-                                            sizeof(struct sockaddr_in),
-                                            0, 0, NULL);
-  nm_objects.MSGHDR_ALLOC = kmem_cache_create("msghdrs",
-                                            sizeof(struct msghdr),
-                                            0, SLAB_HWCACHE_ALIGN, NULL);
-  nm_objects.KVEC_ALLOC = kmem_cache_create("kvecs",
-                                            sizeof(struct kvec),
-                                            0, SLAB_HWCACHE_ALIGN, NULL);
+  /*nm_objects.SOCKADDR_ALLOC = kmem_cache_create("sockaddrs",*/
+                                            /*sizeof(struct sockaddr_in),*/
+                                            /*0, 0, NULL);*/
+  /*nm_objects.MSGHDR_ALLOC = kmem_cache_create("msghdrs",*/
+                                            /*sizeof(struct msghdr),*/
+                                            /*0, SLAB_HWCACHE_ALIGN, NULL);*/
+  /*nm_objects.KVEC_ALLOC = kmem_cache_create("kvecs",*/
+                                            /*sizeof(struct kvec),*/
+                                            /*0, SLAB_HWCACHE_ALIGN, NULL);*/
 }
 
 void nm_structures_release()
 {
   kmem_cache_destroy(nm_objects.NM_PKT_ALLOC);
-  kmem_cache_destroy(nm_objects.SOCKADDR_ALLOC);
-  kmem_cache_destroy(nm_objects.MSGHDR_ALLOC);
-  kmem_cache_destroy(nm_objects.KVEC_ALLOC);
+  /*kmem_cache_destroy(nm_objects.SOCKADDR_ALLOC);*/
+  /*kmem_cache_destroy(nm_objects.MSGHDR_ALLOC);*/
+  /*kmem_cache_destroy(nm_objects.KVEC_ALLOC);*/
   nm_model_free();
 }
 

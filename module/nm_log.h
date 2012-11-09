@@ -19,6 +19,10 @@
 #define NM_INFO_ID 7
 #define NM_DEBUG_ID 15
 
+/** Enabled logging levels **/
+#define NM_LOG_LEVEL NM_DEBUG_ID
+#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR  | LD_SCHEDULE )
+
 #define nm_loglevel_string(lev) \
    ((lev == NM_DEBUG_ID ) ? "NM_DEBUG" :  \
    (lev == NM_INFO_ID) ? "NM_INFO" : \
@@ -40,9 +44,6 @@
 
 #define NM_LOG_PREFIX "net-modeler:"
 
-/** Enabled logging levels **/
-#define NM_LOG_LEVEL NM_DEBUG_ID
-#define NM_ENABLED_DOMAINS ( LD_GENERAL | LD_ERROR  | LD_SCHEDULE )
 
 #define stringify(x) #x
 

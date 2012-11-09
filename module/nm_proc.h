@@ -16,14 +16,6 @@ enum nm_proc_entries{
   __NM_PROC_LEN,
 };
 
-#define CREATE_ENTRY(container,name,root) \
-  if (!(container[name] = create_proc_entry(#name, 0644, root))){ \
-    ret = -1; \
-  } else { \
-    container[name]->write_proc = write_ ## name; \
-    container[name]->read_proc = read_ ## name; \
-  }
-
 
 int initialize_proc_interface(void);
 int cleanup_proc_interface(void);

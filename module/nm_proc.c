@@ -5,6 +5,14 @@ static struct proc_dir_entry *nm_entries[__NM_PROC_LEN];
 
 #define NUM_PAIRWISE(x) ( (x * x) - x)
 
+#define CREATE_ENTRY(container,name,root) \
+  if (!(container[name] = create_proc_entry(#name, 0644, root))){ \
+    ret = -1; \
+  } else { \
+    container[name]->write_proc = write_ ## name; \
+    container[name]->read_proc = read_ ## name; \
+  }
+
 static int read_modelinfo(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
   int len;
@@ -243,6 +251,7 @@ int initialize_proc_interface(void)
 {
   int ret;
   ret = 0;
+  log_func_entry;
   nm_proc_root = proc_mkdir_mode("net-modeler",0644,NULL);
 
   if (!nm_proc_root){

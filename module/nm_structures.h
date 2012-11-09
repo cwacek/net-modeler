@@ -44,9 +44,9 @@ typedef struct nm_packet nm_packet_t;
 
 struct nm_obj_cache {
   struct kmem_cache *NM_PKT_ALLOC;
-  struct kmem_cache *SOCKADDR_ALLOC;
-  struct kmem_cache *MSGHDR_ALLOC;
-  struct kmem_cache *KVEC_ALLOC;
+  //struct kmem_cache *SOCKADDR_ALLOC;
+  //struct kmem_cache *MSGHDR_ALLOC;
+  //struct kmem_cache *KVEC_ALLOC;
 };
 
 #define nm_alloc(name,flags) kmem_cache_alloc(nm_objects.name,flags)
