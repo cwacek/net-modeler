@@ -9,24 +9,30 @@
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
-static DEFINE_SPINLOCK(callback_func_lock);
+//static DEFINE_SPINLOCK(callback_func_lock);
 static uint8_t shutdown_requested = 0;
 static DEFINE_SEMAPHORE(callback_in_progress);
 
-#if NM_LOG_LEVEL & NM_DEBUG_ID
+#if NM_LOG_LEVEL & NM_DEBUG_ID && 0
 #define spin_lock_irq_debug(lock, flag) \
   do { \
     nm_debug(LD_TRACE,"Acquiring lock in %s\n",__func__); \
-    spin_lock_irqsave(lock,flag); \
-  } while(0)
+    spin_lock_irqsave((lock),(flag)); \
+    local_bh_disable(); \
+  } while(0 == 1)
 #define spin_unlock_irq_debug(lock, flag) \
   do { \
     nm_debug(LD_TRACE,"Releasing lock in %s\n",__func__); \
-    spin_unlock_irqrestore(lock,flag); \
+    spin_unlock_irqrestore((lock),(flag)); \
+    local_bh_enable(); \
   } while(0)
 #else
-#define spin_lock_irq_debug(lock,flag) spin_lock_irqsave(lock,flag)
-#define spin_unlock_irq_debug(lock,flag) spin_unlock_irqrestore(lock,flag)
+#define spin_lock_irq_debug(lock,flag) \
+  spin_lock_irqsave((lock),(flag)); \
+  local_bh_disable();
+#define spin_unlock_irq_debug(lock,flag) \
+  spin_unlock_irqrestore((lock),(flag)); \
+  local_bh_enable();
 #endif
 
 void nm_schedule_lock_release(unsigned long flags)
@@ -65,11 +71,11 @@ int nm_init_sched(nm_cb_func func)
   atomic64_set(&nm_sched.now_index,0);
 
   /** Zero initialize our calendar slots or all hell will break loose */
-  spin_lock_irqsave(&nm_calendar_lock,spin_flags);
+  spin_lock_irq_debug(&nm_calendar_lock,spin_flags);
   for (i = 0; i < CALENDAR_BUF_LEN; i++){
     SLOT_INIT(nm_sched.calendar[i]);
   }
-  spin_unlock_irqrestore(&nm_calendar_lock,spin_flags);
+  spin_unlock_irq_debug(&nm_calendar_lock,spin_flags);
 
   nm_debug(LD_GENERAL,"Initialized scheduler. [User callback: %p, system callback: %p]\n",
               nm_sched.callback, nm_sched.timer.function);
@@ -83,11 +89,7 @@ int nm_init_sched(nm_cb_func func)
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
 {
   ktime_t interval;
-  unsigned long spin_flags;
   log_func_entry;
-
-
-  spin_lock_irqsave(&callback_func_lock,spin_flags);
 
   if (shutdown_requested)
     goto release;
@@ -102,10 +104,6 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
   }
 
 release:
-  spin_unlock_irqrestore(&callback_func_lock,spin_flags);
-  //up(&callback_in_progress);
-
-end:
   return HRTIMER_NORESTART;
 }
 
@@ -180,13 +178,13 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
 {
   uint16_t offset;
   nm_hop_t *hop;
+  unsigned long irqflags;
   offset = 0;
 
   if (flags == ENQUEUE_HOP_CURRENT)
   {
     offset = total_pkt_cost(data) - data->hop_progress;
     offset -= adjust;
-    data->hop_progress += adjust;
   }
   else if (flags == ENQUEUE_HOP_NEW)
   {
@@ -205,7 +203,6 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
      * our math.
      */
     offset -= adjust;
-    data->hop_progress += adjust;
   } else
   {
     nm_warn(LD_ERROR,"Bad flag to nm_enqueue");
@@ -225,12 +222,14 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
                           offset, data->hop_cost,data->hop_progress,scheduler_index());
   }
 
-  data->scheduled_amt = offset;
-  data->hop_progress += offset;
+  /* We set scheduled amount to offset + adjust, because while we didn't actually
+   * schedule it, it's only because we skipped it. The time was accounted for. */
+  data->scheduled_amt = offset + adjust;
+  data->hop_progress += offset + adjust;
 
-  spin_lock(&nm_calendar_lock);
+  spin_lock_irq_debug(&nm_calendar_lock, irqflags);
   slot_add_packet(&scheduler_slot((&nm_sched),offset), data);
-  spin_unlock(&nm_calendar_lock);
+  spin_unlock_irq_debug(&nm_calendar_lock, irqflags);
   return 0;
 }
 
