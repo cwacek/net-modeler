@@ -31,9 +31,14 @@ unsigned int hook_func(unsigned int hooknum, struct sk_buff *skb,
   if (! IS_NM_IP(iph->daddr) ){
     return NF_ACCEPT;
   }
+
   if (NM_SEEN(iph)){
     nm_debug(LD_GENERAL,"Accepting previously seen packet. "IPH_FMT"\n",
                     IPH_FMT_DATA(iph));
+    return NF_ACCEPT;
+  }
+
+  if (unlikely(iph->saddr == iph->daddr)) {
     return NF_ACCEPT;
   }
 
@@ -171,11 +176,6 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   nm_packet_t *pkt; 
   int err;
   uint64_t index;
-
-  if (queue_entry_iph(entry)->saddr == queue_entry_iph(entry)->daddr)
-  {
-    nf_reinject(entry,NF_ACCEPT);
-  }
 
   index = scheduler_index();
 
