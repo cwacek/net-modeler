@@ -9,7 +9,7 @@
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
-//static DEFINE_SPINLOCK(callback_func_lock);
+static DEFINE_SPINLOCK(callback_func_lock);
 static uint8_t shutdown_requested = 0;
 static DEFINE_SEMAPHORE(callback_in_progress);
 
@@ -91,6 +91,8 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
   ktime_t interval;
   log_func_entry;
 
+  spin_lock(&callback_func_lock);
+
   if (shutdown_requested)
     goto release;
 
@@ -104,6 +106,7 @@ static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
   }
 
 release:
+  spin_unlock(&callback_func_lock);
   return HRTIMER_NORESTART;
 }
 

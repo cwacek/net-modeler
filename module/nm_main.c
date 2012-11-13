@@ -147,6 +147,7 @@ ktime_t update(struct nm_global_sched *sch)
             nm_warn(LD_ERROR,"CRITICAL ERROR: Failed to reenqueue packet "
                              "for hop %u\n",pkt->path_idx);
             nf_reinject(pkt->data,NF_DROP);
+            nm_packet_free(pkt);
           }
           nm_debug(LD_SCHEDULE,"Scheduling packet "PKT_FMT" on next hop %u\n",
                                 PKT_FMT_DATA(pkt),
@@ -179,6 +180,9 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
 
   index = scheduler_index();
 
+  if (unlikely(!entry))
+    return 0;
+
   nm_debug(LD_GENERAL,"Enqueuing new packet. "IPH_FMT"\n",
                     IPH_FMT_DATA(queue_entry_iph(entry)));
 
@@ -192,6 +196,8 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   
   if (unlikely((err = nm_enqueue(pkt,ENQUEUE_HOP_NEW, (scheduler_index() - index))) < 0))
   {
+    nm_debug(LD_GENERAL,"Failed to inject packet. "IPH_FMT"\n",
+             IPH_FMT_DATA(queue_entry_iph(entry)));
     nf_reinject(pkt->data,NF_DROP);
     nm_packet_free(pkt);
   }
