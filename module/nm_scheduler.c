@@ -9,6 +9,7 @@
 struct nm_global_sched nm_sched;
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt);
 static DEFINE_SPINLOCK(nm_calendar_lock);
+static DEFINE_SPINLOCK(callback_func_lock);
 static uint8_t shutdown_requested = 0;
 static DEFINE_SEMAPHORE(callback_in_progress);
 
@@ -47,7 +48,7 @@ inline ktime_t nm_get_time(void){
  *  The callback function should do whatever it wants to do, then
  *  MUST return the absolute ktime_t for when it wants to be rescheduled.
  *  The function above this one will take care of scheduling the actual
- *  timer. 
+ *  timer.
  *
  *  If the callback function returns a zeroed out ktime_t, nothing will
  *  be scheduled.
@@ -82,28 +83,29 @@ int nm_init_sched(nm_cb_func func)
 static enum hrtimer_restart __nm_callback(struct hrtimer *hrt)
 {
   ktime_t interval;
+  unsigned long spin_flags;
   log_func_entry;
 
-  if (down_trylock(&callback_in_progress) < 0)
-  {
-    nm_notice(LD_ERROR,"Timer callback called, but timer was in active state.\n");
-    goto end;
-  }
+
+  spin_lock_irqsave(&callback_func_lock,spin_flags);
 
   if (shutdown_requested)
-    goto end;
+    goto release;
 
   interval = nm_sched.callback(&nm_sched);
   if (unlikely(ktime_to_ns(interval) == 0))
-    goto end;
+    goto release;
 
   if (unlikely(hrtimer_start(&nm_sched.timer,interval,HRTIMER_MODE_ABS) < 0)){
     nm_notice(LD_ERROR,"Failed to schedule timer\n");
-    goto end;
+    goto release;
   }
 
+release:
+  spin_unlock_irqrestore(&callback_func_lock,spin_flags);
+  //up(&callback_in_progress);
+
 end:
-  up(&callback_in_progress);
   return HRTIMER_NORESTART;
 }
 
@@ -126,7 +128,7 @@ inline nm_packet_t * slot_pull(struct calendar_slot *slot)
   pulled = slot->head;
   if (pulled)
     slot->head = pulled->next;
-  
+
   slot->n_packets--;
   return pulled;
 }
@@ -141,7 +143,7 @@ inline int32_t calc_delay(nm_packet_t *pkt,nm_hop_t *hop)
   uint32_t delay;
   delay = 0;
   /* The delay should be the latency + how long it
-   * will take the packet to cross the link based on 
+   * will take the packet to cross the link based on
    * bw */
 
   if (unlikely( !pkt || !pkt->path || pkt->path->valid != TOS_MAGIC)){
@@ -159,7 +161,7 @@ inline int32_t calc_delay(nm_packet_t *pkt,nm_hop_t *hop)
   delay += hop->delay_ms;
 
   pkt->hop_cost = delay;
-    
+
   delay += hop->tailexit;
   pkt->hop_tailwait = hop->tailexit;
 
@@ -183,8 +185,9 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
   if (flags == ENQUEUE_HOP_CURRENT)
   {
     offset = total_pkt_cost(data) - data->hop_progress;
-    offset += adjust;
-  } 
+    offset -= adjust;
+    data->hop_progress += adjust;
+  }
   else if (flags == ENQUEUE_HOP_NEW)
   {
     hop = &nm_model._hoptable[data->path->hops[data->path_idx]];
@@ -197,8 +200,13 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
     offset = calc_delay(data,hop);
     if (offset < 0)
       return -1;
-    offset += adjust;
-  } else 
+    /* If we have to adjust because we missed a time interval, subtract it
+     * from the offset, but add it to the hop_progress or we'll end off on
+     * our math.
+     */
+    offset -= adjust;
+    data->hop_progress += adjust;
+  } else
   {
     nm_warn(LD_ERROR,"Bad flag to nm_enqueue");
     return -1;
@@ -206,7 +214,7 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
 
   if (unlikely(!one_hop_schedulable(offset))){
     offset = CALENDAR_BUF_LEN -1;
-    data->flags |= NM_FLAG_HOP_INCOMPLETE; 
+    data->flags |= NM_FLAG_HOP_INCOMPLETE;
     nm_debug(LD_SCHEDULE, "Scheduling partial packet with offset %u."
                           " Total cost: %u. Progress: %u [index: %llu]",
                           offset, data->hop_cost,data->hop_progress,scheduler_index());
@@ -231,7 +239,7 @@ int nm_enqueue(nm_packet_t *data,char flags,int adjust)
  */
 void nm_schedule(ktime_t time){
   log_func_entry;
-  
+
   if (unlikely(hrtimer_start(&nm_sched.timer,time,HRTIMER_MODE_REL) < 0)){
     nm_warn(LD_ERROR,"Failed to schedule timer for %lldns from now\n",
                 ktime_to_ns(time));

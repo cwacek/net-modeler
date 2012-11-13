@@ -193,6 +193,7 @@ static int _nm_queue_cb(struct nf_queue_entry *entry, unsigned int queuenum)
   if (unlikely((err = nm_enqueue(pkt,ENQUEUE_HOP_NEW, (scheduler_index() - index))) < 0))
   {
     nf_reinject(pkt->data,NF_DROP);
+    nm_packet_free(pkt);
   }
 
   nm_debug(LD_TIMING,"Completed packet enqueue at %lldns [index: %llu]\n",ktime_to_ns(nm_get_time()),index);
